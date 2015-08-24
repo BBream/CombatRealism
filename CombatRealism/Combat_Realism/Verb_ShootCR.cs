@@ -64,12 +64,46 @@ namespace Combat_Realism
             return hitReport;
         }
 
+        private double ShooterInaccuracyVariation()
+        {
+        	int prevSeed = Rand.Seed;
+        	Rand.Seed = this.caster.thingIDNumber;
+        	float rangeVariation = Rand.Range(0, 2);
+        	Rand.Seed = prevSeed;
+        	return Math.Sin((Find.TickManager.TicksAbs / 60) + rangeVariation) * Math.Log(Math.Pow(this.caster.GetStatValue(StatDefOf.ShootingAccuracy),-3), 8);
+        }
+        
+        private double ShooterRangeEstimation(Vector3 source, Vector3 target)
+        {
+        	float actualRange = Vector3.Distance(target, source);
+        	return (double)Rand.Gaussian(actualRange, (float)(Math.Pow(actualRange, 2) / (50 * 100)) * (float)Math.Pow((double)this.caster.GetStatValue(StatDefOf.ShootingAccuracy), -2));
+        }
+        
+        
+        
         /// <summary>
         /// Fires a projectile using a custom HitReportFor() method to override the vanilla one, as well as better collateral hit detection and adjustable range penalties and forcedMissRadius
         /// </summary>
         /// <returns>True for successful shot</returns>
         protected bool TryCastShot(float forcedMissRadius, float rangeFactor)
         {
+        	/*
+        	 * Things to add:
+        	 * 
+ 			 * shooter inaccuracy,
+ 			 * 		>> THIS IS ShooterInaccuracyVariation
+			 * shooter ability to estimate range,
+			 * 		>> THIS IS ShooterRangeEstimation
+			 * shooter ability to lead,
+			 * 		++ NoImageAvailable did this
+			 * -- this.currentTarget.Thing.GetStatValue(StatDefOf.MoveSpeed, false);
+			 * additional inaccuracies from weather and lighting
+			 * 		-- NoImageAvailable is doing this
+			 * recoil
+			 * -- int currentBurst = (this.verbProps.burstShotCount - this.burstShotsLeft)
+			 * shooter ability to handle recoil
+        	 */
+        	
             ShootLine shootLine;
             if (!base.TryFindShootLineFromTo(this.caster.Position, this.currentTarget, out shootLine))
             {

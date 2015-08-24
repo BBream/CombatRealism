@@ -38,7 +38,6 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
-    <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
     <Reference Include="UnityEngine">
@@ -47,6 +46,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Combat_Realism\CompTurretInit.cs" />
+    <Compile Include="Combat_Realism\ProjectileCR.cs" />
     <Compile Include="Combat_Realism\Utility.cs" />
     <Compile Include="Combat_Realism\Verb_ShootSniper.cs" />
     <Compile Include="Combat_Realism\Verb_ShootRifle.cs" />

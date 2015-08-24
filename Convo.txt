@@ -63,6 +63,11 @@ Contribute to CombatRealism development by creating an account on GitHub.
 [00:22] alistaire: It might also want a restart or something
 [00:22] alistaire: Don't know
 [00:22] noimageavailable: We'll see
+
+<!-- -------------------------------------------------------------------
+		/ / / / / / / / / / || FIRST DISCUSSION || \ \ \ \ \ \ \ \ \ \
+	 -------------------------------------------------------------------  -->
+
 [00:23] noimageavailable: We could also recap what we discussed earlier in the meantime, lay out what it should look like exactly
 [00:24] alistaire: Sure
 [00:26] noimageavailable: I figure the important factors to implement are: shooter inaccuracy, minute of angle, shooter ability to estimate range, shooter ability to lead, additional inaccuracies from weather and lighting
