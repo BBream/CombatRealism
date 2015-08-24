@@ -10,7 +10,7 @@ namespace Combat_Realism
         private float ShooterRangeEstimation(Vector3 source, Vector3 target)
         {
             float actualRange = Vector3.Distance(target, source);
-            return (float)Rand.Gaussian(actualRange, (float)(Math.Pow(actualRange, 2) / (50 * 100)) * (float)Math.Pow((double)this.caster.GetStatValue(StatDefOf.ShootingAccuracy), -2));
+            return Rand.Gaussian(actualRange, (float)(Math.Pow(actualRange, 2) / (50 * 100)) * (float)Math.Pow((double)this.caster.GetStatValue(StatDefOf.ShootingAccuracy), -2));
         }
 
         /// <summary>
@@ -122,13 +122,11 @@ namespace Combat_Realism
         	return Math.Sin((Find.TickManager.TicksAbs / 60) + rangeVariation) * Math.Log(Math.Pow(this.caster.GetStatValue(StatDefOf.ShootingAccuracy),-3), 8);
         }
         
-        private double ShooterRangeEstimation(Vector3 source, Vector3 target)
+        private int RecoilAmount()
         {
-        	float actualRange = Vector3.Distance(target, source);
-        	return (double)Rand.Gaussian(actualRange, (float)(Math.Pow(actualRange, 2) / (50 * 100)) * (float)Math.Pow((double)this.caster.GetStatValue(StatDefOf.ShootingAccuracy), -2));
+        	int currentBurst = (this.verbProps.burstShotCount - this.burstShotsLeft);
+        	
         }
-        
-        
         
         /// <summary>
         /// Fires a projectile using a custom HitReportFor() method to override the vanilla one, as well as better collateral hit detection and adjustable range penalties and forcedMissRadius

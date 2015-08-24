@@ -32,7 +32,9 @@ namespace Combat_Realism
 		 * ---- calculate variation
 		 * condition factored into shot variation
 		 * optics improving ranged finding
-		 * 
+		 * increase chance of hitting a downed pawn if the pawn was downed before the shot was fired
+		 * -- Requires a scribe
+		 * -- Track a private bool downedOnSpawn or something
 		 */
 		
 		new public void Launch(Thing launcher, TargetInfo targ, Thing equipment = null)
