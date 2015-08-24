@@ -21,6 +21,7 @@ namespace Combat_Realism
 	public class ProjectileCR : Projectile
 	{
 		private Sustainer ambientSustainer;		//required for the Launch sounds
+        private static List<IntVec3> checkedCells = new List<IntVec3>();
 		
 		/*
 		 * Things to add:
@@ -65,5 +66,112 @@ namespace Combat_Realism
 		}
 		
 		// CUSTOM CHECKFORFREEINTERCEPTBETWEEN
+        new private bool CheckForFreeInterceptBetween(Vector3 lastExactPos, Vector3 newExactPos)
+        {
+            IntVec3 lastPos = lastExactPos.ToIntVec3();
+            IntVec3 newPos = newExactPos.ToIntVec3();
+            if (newPos == lastPos)
+            {
+                return false;
+            }
+            if (!lastPos.InBounds() || !newPos.InBounds())
+            {
+                return false;
+            }
+            if ((newPos - lastPos).LengthManhattan == 1)
+            {
+                return this.CheckForFreeIntercept(newPos);
+            }
+            if (this.origin.ToIntVec3().DistanceToSquared(newPos) > 16f)
+            {
+                Vector3 vector = lastExactPos;
+                Vector3 v = newExactPos - lastExactPos;
+                Vector3 b = v.normalized * 0.2f;
+                int num = (int)(v.MagnitudeHorizontal() / 0.2f);
+                ProjectileCR.checkedCells.Clear();
+                int num2 = 0;
+                while (true)
+                {
+                    vector += b;
+                    IntVec3 intVec3 = vector.ToIntVec3();
+                    if (!ProjectileCR.checkedCells.Contains(intVec3))
+                    {
+                        if (this.CheckForFreeIntercept(intVec3))
+                        {
+                            break;
+                        }
+                        ProjectileCR.checkedCells.Add(intVec3);
+                    }
+                    num2++;
+                    if (num2 > num)
+                    {
+                        return false;
+                    }
+                    if (intVec3 == newPos)
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            return false;
+        }
+
+        new private bool CheckForFreeIntercept(IntVec3 cell)
+        {
+            float distFromOrigin = (cell.ToVector3Shifted() - this.origin).MagnitudeHorizontalSquared();
+            if (distFromOrigin < 16f)
+            {
+                return false;
+            }
+            List<Thing> list = Find.ThingGrid.ThingsListAt(cell);
+            for (int i = 0; i < list.Count; i++)
+            {
+                Thing thing = list[i];
+                if (thing != this.AssignedMissTarget)
+                {
+                    if (thing.def.Fillage == FillCategory.Full)
+                    {
+                        this.Impact(thing);
+                        return true;
+                    }
+                    if (thing.def.category == ThingCategory.Pawn)
+                    {
+                        Pawn pawn = (Pawn)thing;
+                        float collateralChance = 0.45f;
+                        if (pawn.GetPosture() != PawnPosture.Standing)
+                        {
+                            if (pawn.def.race.baseBodySize > 1)
+                            {
+                                collateralChance *= 0.7f;
+                            }
+                            else if (pawn.def.race.baseBodySize > 0.5)
+                            {
+                                collateralChance *= 0.2f;
+                            }
+                            else
+                            {
+                                collateralChance *= 0.8f;
+                            }
+                        }
+                        collateralChance *= pawn.BodySize;
+
+                        if (Rand.Value < collateralChance)
+                        {
+                            this.Impact(pawn);
+                            return true;
+                        }
+                    }
+                    if (Rand.Value < thing.def.fillPercent)
+                    {
+                        this.Impact(thing);
+                        return true;
+                    }
+
+                }
+            }
+            return false;
+        }
+
 	}
 }
