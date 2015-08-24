@@ -35,7 +35,8 @@ namespace Combat_Realism
                 Vector3 moveVec = targetPawn.pather.nextCell.ToVector3() - targetPawn.DrawPos;
 
                 float leadVariation = 0;
-                if (this.CasterIsPawn) {
+                if (this.CasterIsPawn)
+                {
                     leadVariation = 1 - this.CasterPawn.GetStatValue(StatDefOf.ShootingAccuracy, false);
                 }
                 targetLoc += moveVec * Verse.Rand.Gaussian(leadDistance, leadDistance * leadVariation);
@@ -51,7 +52,7 @@ namespace Combat_Realism
             {
                 shiftDistance += targetDistance * 0.2f;
             }
-            targetLoc += GenRadial.RadialPattern[(int)Rand.Range(0, shiftDistance)].ToVector3();    //Need to figure out a way to do this more accurately
+            targetLoc += new Vector3(Rand.Range(-shiftDistance, shiftDistance), Rand.Range(-shiftDistance, shiftDistance));
 
             return targetLoc;
         }
@@ -113,6 +114,9 @@ namespace Combat_Realism
             return hitReport;
         }
 
+        /// <summary>
+        /// Creates a sine based variation in shot angle, call only if this.caster is a pawn
+        /// </summary>
         private double ShooterInaccuracyVariation()
         {
         	int prevSeed = Rand.Seed;
@@ -122,12 +126,15 @@ namespace Combat_Realism
         	return Math.Sin((Find.TickManager.TicksAbs / 60) + rangeVariation) * Math.Log(Math.Pow(this.caster.GetStatValue(StatDefOf.ShootingAccuracy),-3), 8);
         }
         
+<<<<<<< HEAD
         private int RecoilAmount()
         {
         	int currentBurst = (this.verbProps.burstShotCount - this.burstShotsLeft);
         	
         }
         
+=======
+>>>>>>> origin/master
         /// <summary>
         /// Fires a projectile using a custom HitReportFor() method to override the vanilla one, as well as better collateral hit detection and adjustable range penalties and forcedMissRadius
         /// </summary>
