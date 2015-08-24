@@ -7,6 +7,55 @@ namespace Combat_Realism
 {
 	public class Verb_ShootCR : Verse.Verb_Shoot
 	{
+        private float ShooterRangeEstimation(Vector3 source, Vector3 target)
+        {
+            float actualRange = Vector3.Distance(target, source);
+            return (float)Rand.Gaussian(actualRange, (float)(Math.Pow(actualRange, 2) / (50 * 100)) * (float)Math.Pow((double)this.caster.GetStatValue(StatDefOf.ShootingAccuracy), -2));
+        }
+
+        /// <summary>
+        /// Shifts the original target position in accordance with target leading, range estimation and weather/lighting effects
+        /// </summary>
+        private Vector3 EstimateTarget()
+        {
+            Vector3 targetLoc = this.currentTarget.Cell.ToVector3();
+
+            //Estimate range
+            float targetDistance = ShooterRangeEstimation(this.caster.Position.ToVector3(), this.currentTarget.Cell.ToVector3());
+            targetLoc = (this.currentTarget.Cell.ToVector3() - this.caster.DrawPos).normalized * targetDistance;
+
+            //Lead a moving target
+            Pawn targetPawn = this.currentTarget.Thing as Pawn;
+            if (targetPawn != null && targetPawn.pather.Moving)
+            {
+                targetLoc = targetPawn.DrawPos;
+
+                float timeToTarget = targetDistance / this.verbProps.projectileDef.projectile.speed;
+                float leadDistance = targetPawn.GetStatValue(StatDefOf.MoveSpeed, false) * timeToTarget;
+                Vector3 moveVec = targetPawn.pather.nextCell.ToVector3() - targetPawn.DrawPos;
+
+                float leadVariation = 0;
+                if (this.CasterIsPawn) {
+                    leadVariation = 1 - this.CasterPawn.GetStatValue(StatDefOf.ShootingAccuracy, false);
+                }
+                targetLoc += moveVec * Verse.Rand.Gaussian(leadDistance, leadDistance * leadVariation);
+            }
+
+            //Shift for weather/lighting
+            float shiftDistance = 0;
+            if (!this.caster.Position.Roofed() || !targetLoc.ToIntVec3().Roofed())  //Change to more accurate algorithm?
+            {
+                shiftDistance += targetDistance * 1 - Find.WeatherManager.CurWeatherAccuracyMultiplier;
+            }
+            if (Find.GlowGrid.PsychGlowAt(targetLoc.ToIntVec3()) == PsychGlow.Dark)
+            {
+                shiftDistance += targetDistance * 0.2f;
+            }
+            targetLoc += GenRadial.RadialPattern[(int)Rand.Range(0, shiftDistance)].ToVector3();    //Need to figure out a way to do this more accurately
+
+            return targetLoc;
+        }
+
         //Custom HitReportFor with scaleable range penalties
         public virtual HitReport HitReportForModRange(TargetInfo target)
         {
