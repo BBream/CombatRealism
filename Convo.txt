@@ -1,0 +1,294 @@
+[23:05] alistaire: cuchulainn97
+[23:07] alistaire: Boop
+[23:08] noimageavailable: Beep
+[23:11] noimageavailable: At least we're in the same timezone, the last project I did with other people they were all holed up somewhere in West-Canada on a 9 hour time difference, that was fun to schedule
+[23:11] alistaire: Had the same with RimworldRevamped
+[23:12] alistaire: The guy was 2 hours off an AM/PM switch
+[23:14] noimageavailable: Right so I suppose we need some kind of code repository, a plan for what we actually want to do, then we put it into code and watch as Rimworld explodes the first time we load it
+[23:14] alistaire: the slack has a repo
+[23:14] alistaire: somewhere...
+[23:15] noimageavailable: Is it this "Team Directory" thing perhaps?
+[23:15] noimageavailable: Nevermind
+[23:15] alistaire: I can't remember
+[23:16] noimageavailable: What about the more conventional options like github? I've been looking for an excuse to learn to use that anyway
+[23:16] alistaire: That's the repo
+[23:16] noimageavailable: I don't follow
+[23:16] alistaire: https://github.com/RimWorldMod
+[23:17] noimageavailable: Ah
+[23:18] noimageavailable: So can we just use that?
+[23:18] alistaire: I guess
+[23:19] alistaire: Setting one up
+[23:19] noimageavailable: Setting up public projects on github is free, isn't it?
+[23:19] alistaire: Public ones are free
+[23:20] noimageavailable: I've been thinking about moving my source code there for a while now, so might as well do it now and then we use that
+[23:21] alistaire: https://github.com/RimWorldMod/CombatRealism
+GitHub
+RimWorldMod/CombatRealism
+Contribute to CombatRealism development by creating an account on GitHub.
+[23:24] noimageavailable: Say, does Visual Studio automatically create github accounts?
+[23:24] alistaire: No idea
+[23:24] alistaire: I use SharpDevelop cause I'm a scrub
+[23:26] noimageavailable: Yeah, I just tried setting up an account and turns out my email address is already given to the silly name I used when registering VS
+[23:27] noimageavailable: Nevermind, turns out this is actually something from years ago
+[23:27] alistaire: fifafo
+[23:29] noimageavailable: Gesundheit?
+[23:34] noimageavailable: Right, so fixed those account shenanigans
+[23:34] alistaire: Aight
+[23:36] noimageavailable: So what's up with the repo you created?
+[23:36] alistaire: idk
+[23:40] noimageavailable: Maybe add me to the people who can commit?
+[23:41] alistaire: What's your name
+[23:42] noimageavailable: NoImageAvailable
+[23:45] alistaire: You should get an email
+[23:46] noimageavailable: Right, done
+[23:48] noimageavailable: So time to figure out what we actually wanna do?
+[23:48] alistaire: Do you have GitHub
+[23:48] alistaire: The client
+[23:49] noimageavailable: Not yet
+[23:50] noimageavailable: Why?
+[23:52] alistaire: You'll need that to sync and commit etc
+[23:54] noimageavailable: Right
+[23:54] noimageavailable: I'm getting that now
+[23:54] noimageavailable: BTW how long do you want to keep going now?
+[23:55] alistaire: How do you mean
+[23:55] noimageavailable: Well I mean its getting late, how long before you want to go to sleep?
+[23:55] alistaire: Dunno I don't got uni this week
+[23:56] alistaire: You'll have to drop the project in the repo though
+----- Today August 24th, 2015 -----
+[00:18] noimageavailable: Is it normal for the client installation to take this long?
+[00:19] alistaire: Did it ask for admin rights + internet access
+[00:19] noimageavailable: At the very start when it downloaded
+[00:20] noimageavailable: But now its been stuck at "extracting command line tools for git" for a good 20 minutes
+[00:21] alistaire: Dunno, it took some time I remember
+[00:22] alistaire: It might also want a restart or something
+[00:22] alistaire: Don't know
+[00:22] noimageavailable: We'll see
+[00:23] noimageavailable: We could also recap what we discussed earlier in the meantime, lay out what it should look like exactly
+[00:24] alistaire: Sure
+[00:26] noimageavailable: I figure the important factors to implement are: shooter inaccuracy, minute of angle, shooter ability to estimate range, shooter ability to lead, additional inaccuracies from weather and lighting
+[00:26] noimageavailable: oh and lets not forget recoil and shooter ability to handle recoil
+[00:26] alistaire: and gun specific variation
+[00:27] noimageavailable: right, so gun condition and optics
+[00:27] alistaire: Well, mainly a barrel not being completely straight and plasma weapons not aiming exactly where they go and such
+[00:27] alistaire: Gun condition could be nice too
+[00:28] alistaire: As in your gun not firing sometimes
+[00:28] noimageavailable: yeah, I was thinking lower condition means higher MOA and weapons with better optics would have improved range finding
+[00:30] alistaire: Aiming variation: Shooter skill (several times), Lighting
+Launch variation: Gun specific variation, Gun condition
+In-air variation: Weather
+[00:31] alistaire: Also Leading variation probably
+[00:32] noimageavailable: On the gun specific variation it would be good if we can utilize existing stats as much as possible, for ease of making compatibility patches
+[00:33] noimageavailable: So if we can utilize the four accuracy ratings as our MOA and optics quality for example it could save a lot of work down the line
+[00:34] alistaire: Gun variation can be based a lot on AccuracyLong
+[00:35] alistaire: To check what each variation is you could set AccuracyLong for each def then open the dev console's weapon stats list
+[00:36] noimageavailable: Yes, I was thinking since we're going to replace the calculations that use those values anyway we essentially have four floats we can use without having to create an entirely new ThingDef
+[00:37] alistaire: True
+[00:37] alistaire: It still wouldn't /actually/ assign such values
+[00:37] alistaire: Quality would have effect on it too
+[00:37] alistaire: Annoyingly
+[00:38] noimageavailable: Hhm, true
+[00:39] noimageavailable: That could actually pose an issue if lower quality was to decrease MOA for example
+[00:39] alistaire: Yup
+[00:39] noimageavailable: Let's see what kind of variables we need first and then worry about implementing them
+[00:41] noimageavailable: MOA should be simple enough, just roll a random angle between +- a defined float
+[00:41] alistaire: well
+[00:41] alistaire: throw the amount of ticks into a sine
+[00:42] alistaire: You'd have to make the sine add a random amount of noise based on the pawn currently aiming
+[00:42] noimageavailable: I thought the sine was for the shaking hands?
+[00:43] alistaire: Yes but shaking hands are only visuals
+[00:43] alistaire: You have to do that when launching too
+[00:43] alistaire: You want a consistent timescale between the two
+[00:44] noimageavailable: Right, but I mean minute of angle is a property of the weapon itself, it is how much the bullet deviates when it leaves the barrel
+[00:44] noimageavailable: It is independent from the shooter
+[00:44] alistaire: So shotvariation
+[00:44] noimageavailable: Yes
+[00:44] alistaire: shootervariation has to be a sine
+[00:44] alistaire: shotvariation doesn't
+[00:45] alistaire: that's just math.random(-shotvariation, shotvariation)
+[00:45] alistaire: For the shootervariation you do need a sine
+[00:45] alistaire: Take some unique part about the pawn and use it as seed for a math.random(-pi, pi) too so pawns don't all shake the same way
+[00:45] noimageavailable: Right
+[00:46] noimageavailable: And we want shooter skill to factor in somehow
+[00:46] alistaire: That's the sine's amplitude
+[00:46] noimageavailable: Right, but wouldn't higher amplitude mean more shaking?
+[00:47] alistaire: There's a vanilla method to get a shooters accuracy based on its shooter stats
+[00:47] noimageavailable: Unless we want to modify the skill progression too we are working with something that goes 0.5, 0.75, 0.80, etc.
+[00:47] alistaire: Well you could just normalize the existing values
+[00:47] alistaire: Make it a log scale
+[00:48] noimageavailable: Not sure I follow
+[00:48] alistaire: Skill levels 15-20 are all around 99% accurate
+[00:48] alistaire: Each one maybe 0.1% more
+[00:49] alistaire: You could do 1 - ShooterAccuracyStat and throw that in an inverse log
+[00:51] alistaire: Because 99.9 would become 0.1 which is the smallest, compared to 50 you can use a log to get them closer to eachother then normalize them and use those values for actual shooter variation
+[00:51] noimageavailable: Okay
+[00:51] noimageavailable: The actual values would then be subject to balancing in the future
+[00:52] alistaire: They would be based off the base game's accuracy stats too
+[00:52] alistaire: They are this way
+[00:53] noimageavailable: Yes, I was talking about those. We can change them at a later date in XML until we're happy with the balance
+[00:53] alistaire: Pretty sure they're in C#
+[00:53] alistaire: Ah they're in StatDefs
+[00:54] alistaire: <factorsPerLevel>
+         <li>0.50</li>
+         <li>0.70</li>
+         <li>0.80</li>
+         <li>0.90</li>
+         <li>0.93</li>
+         <li>0.95</li>
+         <li>0.96</li>
+         <li>0.965</li>
+         <li>0.97</li>
+         <li>0.975</li>
+         <li>0.98</li>
+         <li>0.985</li>
+         <li>0.9875</li>
+         <li>0.99</li>
+         <li>0.991</li>
+         <li>0.992</li>
+         <li>0.993</li>
+         <li>0.994</li>
+         <li>0.995</li>
+         <li>0.996</li>
+         <li>0.997</li>
+       </factorsPerLevel>
+[00:54] noimageavailable: Hhm, then what do the files in StatDefs do?
+[00:55] noimageavailable: Nevermind, didn't read properly
+[00:55] alistaire: Currently they sometimes have effect on some shots
+[00:56] alistaire: I bet there's a formula for that progression
+[00:56] noimageavailable: I would have assumed those are the skill values as they are used to calculate a pawns' shooting accuracy
+[00:56] alistaire: They're multiplied with weapon stat accuracies
+[00:57] alistaire: Anything above level 6 in shooting is hardly noticeable
+[00:58] noimageavailable: Right, so this is what I was talking about, we can simply adjust these values if we feel higher levels of shooting aren't rewarding enough or some such
+[00:58] alistaire: Probably
+[00:59] noimageavailable: Well and if not it shouldn't be too hard to tweak the formula so this shouldn't be an issue
+[01:00] noimageavailable: So anything else about the sine?
+[01:00] alistaire: The frequency might alternate
+[01:01] alistaire: To make it more interesting
+[01:01] alistaire: That does mean it's gotta be tracked
+[01:01] alistaire: But that's all graphical fluff once again
+[01:02] noimageavailable: Right, lets put that down as something for the future
+[01:03] alistaire: leading will require some skill progression too
+[01:04] alistaire: It could be a custom StatDef added by the mod
+[01:05] noimageavailable: Do we really need a separate leading stat?
+[01:05] alistaire: To make it natively be affected by sight, yes
+[01:05] noimageavailable: What would the advantage be over just co-opting the already existing shooting stat?
+[01:05] alistaire: You could do it in C# too
+[01:06] alistaire: The advantage is you could choose which health diffs have effect and how much
+[01:07] noimageavailable: I suppose there is a case to be made to not have manipulation affect leading, though I think we could make it a generic Aiming skill so we can use it for range estimation too
+[01:08] alistaire: Well just a stat not a skill
+[01:08] alistaire: I don't know how well adding that will work
+[01:08] alistaire: StatDefOf doesn't seem to be open to additional stats
+[01:09] alistaire: It's basically an enum without it saying so
+[01:09] noimageavailable: Hhm
+[01:10] noimageavailable: Worst case we can still co-opt the shooting stat and it'll be affected by manipulation, not ideal but no dealbreaker either
+[01:10] alistaire: It's also possible to just use a formula and factor in manipulation at an acceptable weight
+[01:11] noimageavailable: Right, we'll have to look into our options there
+[01:12] noimageavailable: Regarding the implementation I think target leading should move the actual target away from the original target along the line of movement in a random range depending on the stat
+[01:13] noimageavailable: For range estimation we can probably use the same method but move the target along the line between the lead target and the shooter
+[01:13] noimageavailable: So leading comes first and then range
+[01:14] noimageavailable: Although on second thought it probably doesn't make much difference
+[01:14] alistaire: It's not that hard
+[01:15] alistaire: Make a triangle using an estimated range and estimated movement direction and new location
+[01:16] alistaire: Estimation could be based off of the shooting formula
+[01:16] alistaire: Just with nothing but sight having any weight
+[01:16] alistaire: Maybe thinking capacity or something
+[01:17] noimageavailable: Yeah, it shouldn't be anything complex, just a vector addition between two randomized vectors
+[01:17] noimageavailable: You mean conciousness?
+[01:17] noimageavailable: I don't think Rimworld has anything resembling an intelligence score for pawns
+[01:17] alistaire: I think more in terms of triangles, less in terms of quaternions sadly
+[01:18] alistaire: You don't want to know how I tried to apply shot variation using tan()
+[01:18] noimageavailable: I was always mediocre at math, but wouldn't two vectors and the result of their addition form your triangle?
+[01:19] alistaire: They probably would
+[01:19] alistaire: Range is just easily visualized as an edge
+[01:20] noimageavailable: Yeah, so we just generate a vector for range and a vector for leading, add them and apply it to the original target's location and that is our actual target
+[01:21] alistaire: Mhm
+[01:21] alistaire: I'd check the range between source and target, RNG to get something maybe 10% off max then get the vector representing that location
+[01:22] alistaire: There's probably a faster way with only vectors
+[01:22] alistaire: We'd have to take bullet speed into account too
+[01:23] alistaire: Now it's a more complicated one
+[01:25] noimageavailable: Bullet speed is kinda indispensable when calculating lead times, yeah
+[01:25] alistaire: Weird how that works
+[01:25] alistaire: CR increases bullet speeds but it's still important
+[01:26] noimageavailable: Well it does increase the range too
+[01:26] noimageavailable: Leading isn't really that important at shotgun range, it comes into play at rifle ranges
+[01:27] alistaire: Yea which is why it's a percentage instead of what vanilla does with its 0.6x0.6 rectangle
+[01:28] alistaire: At 5 meters away it shouldn't matter that you think you're 4.5 meters away
+[01:28] noimageavailable: Yup
+[01:29] noimageavailable: And at 400m you can whiff badly and hit the raider next to your target
+[01:29] alistaire: With bullet speed it's more complicated
+[01:29] alistaire: Not sure how to fix that
+[01:29] alistaire: It's hitting a line with a circle (edited)
+[01:30] alistaire: line being estimated lead and circle being the bullet
+[01:32] noimageavailable: Well if you want a real challenge pretend that bullets would slow down in the air and time to target would increase exponentially with distance :stuck_out_tongue:
+[01:33] alistaire: Also gotta take the wind into account
+[01:33] alistaire: Check the A* for planned enemy movement
+[01:35] noimageavailable: Yeah I think wind and dynamic bullet speed is something for the future
+[01:35] alistaire: Heh
+[01:38] noimageavailable: Now considering the relatively low flight times and pawn speeds, wouldn't it be easiest to use the flight time to the target's current position multiplied by the target's speed?
+[01:38] noimageavailable: That is not 100% accurate but what is commonly used in shooting circles IIRC
+[01:39] alistaire: What would that give
+[01:40] noimageavailable: The distance the target can move in the time between shot and impact
+[01:41] noimageavailable: Lead distance (in cells) = target movement (c/s) * time to impact (s)
+[01:42] noimageavailable: So if a target is moving 4.2c/s and the bullet needs 0.5 seconds to reach it could move 2.1 cells
+[01:42] alistaire: And then fire the shot using polar coordinates as guides
+[01:42] alistaire: So you get the new vector target
+[01:43] alistaire: cause 2.1 cells and a rotation of the pawn's current rotation
+[01:43] noimageavailable: Right, I was thinking our lead vector is Rand(lead distance * lower end factor, lead distance * upper end factor)
+[01:44] alistaire: Possibly
+[01:44] alistaire: But those calculations could be made even by shooting noobs
+[01:44] noimageavailable: What do you mean?
+[01:45] alistaire: It's hard to fail those calculations so random chance is less useful
+[01:45] alistaire: Rand(estimated range * lower end factor, estimated range * upper end factor) then an exact 4.2*0.5
+[01:45] noimageavailable: Keep in mind that you can only aim that precisely if you have a scope with marking
+[01:46] alistaire: Yea but a shooter usually knows how long till impact
+[01:46] alistaire: And the average speed of its target
+[01:47] noimageavailable: Yes, but if you are in the middle of combat using iron sights you have to eyeball it for the most part
+[01:47] noimageavailable: Nobody busts out a calculator in the middle of a firefight
+[01:48] noimageavailable: So in our lower and upper end factors we bring in the aiming stat and whether the weapon is scoped
+[01:48] alistaire: For the estimated range certainly
+[01:48] alistaire: Because that's already gonna be a wrong number most of the time, I think there's no need jinxing the lead distance too
+[01:49] noimageavailable: What do you mean?
+[01:50] alistaire: The system only needs so many random factors till one shot will make a 180 turn in the air and shoot its owner through bad rolls
+[01:51] alistaire: A normal deviation would help with this too
+[01:51] alistaire: Keep the failures in check
+[01:51] noimageavailable: How so?
+[01:52] alistaire: Math.Random will very often give too extreme results
+[01:53] noimageavailable: XCOM! *shakes fist*
+[01:53] alistaire: With a normal *distribution you'd at least have about the right result most of the time
+[01:54] noimageavailable: Right and how exactly is it different from Math.Rand?
+[01:54] alistaire: It's more biased to the middle
+[01:55] noimageavailable: I mean the technical implementation
+[01:57] alistaire: You'd use gaussian distribution with a random key and you'd have to Min(Max(Result))
+[01:57] noimageavailable: Quick question, the github client finally finished. I take it under Repository Settings/Remote I'm supposed to enter https://github.com/RimWorldMod/CombatRealism ?
+GitHub
+RimWorldMod/CombatRealism
+Contribute to CombatRealism development by creating an account on GitHub.
+[01:58] noimageavailable: What's the performance impact of that?
+[01:58] alistaire: https://github.com/RimWorldMod/CombatRealism.git
+[01:58] slackbot: Pssst! I didn’t unfurl https://github.com/RimWorldMod/CombatRealism.git because it was already shared in this channel quite recently (within the last hour) and I didn’t want to clutter things up.
+Only you can see this message
+[01:59] noimageavailable: If 50 raiders each do two of those every time they shoot that could be an issue
+[01:59] alistaire: I have no idea.
+[01:59] alistaire: They might as well not lead
+[02:00] alistaire: An inverse norm lookup is trivial I believe
+[02:00] noimageavailable: Well, I guess we'll see if Rimworld tanks to 3 FPS
+[02:02] noimageavailable: Also how do I go about committing the project?
+[02:02] alistaire: Did you make a local copy?
+[02:02] alistaire: Dunno, master or something
+[02:03] alistaire: Did you have to make a folder for the repo to be stored in
+[02:03] alistaire: And, does it show up on the left
+[02:04] alistaire: Cause then you go to that location and paste your mod in it and github will detect the folders being updated
+[02:04] alistaire: Then you can create a pull request
+[02:10] noimageavailable: Damn, this thing is really buggy
+[02:10] alistaire: Or I guess just push it
+[02:14] noimageavailable: It keeps insisting I do the tutorial for some reason
+[02:15] noimageavailable: So I think we were done with lead and range?
+[02:16] alistaire: I guess
+[02:19] noimageavailable: Right, we still have visibility on the list, I think it would be simple enough to either factor it into lead and range or to have it be a separate offset
+[02:20] alistaire: No idea how to do that
+[02:20] alistaire: Maybe make it an overall factor to aiming variation
+[02:21] alistaire: Make it a squareroot of the light level
+[02:21] noimageavailable: Would be simple enough to multiply shooting stat against the respective malus
+[02:22] noimageavailable: I figured just use the existing penalties since the game already imposes them
+[02:22] alistaire: I haven't looked at those
+[02:24] noimageavailable: Client won't let me commit to master for some reason
+[02:25] alistaire: Did you add a title
