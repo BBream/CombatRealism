@@ -191,8 +191,8 @@ namespace Combat_Realism
         	{
         		this.Impact(
     				(pawn.Downed != this.targetDownedOnSpawn
-    			 		? Rand.Value > (pawn.BodySize >= 1.6 ? (pawn.BodySize - 0.5) / pawn.BodySize : (pawn.def.race.Humanlike ? 0.8 : 0.7))
-    			 		: (pawn.Downed ? Rand.Value > 0.93 : true))
+        			 ? Rand.Value < (pawn.BodySize >= 1.6 ? (pawn.BodySize - 0.5) / pawn.BodySize : (pawn.RaceProps.body.defName == "Human" ? 0.8 : 0.7))
+    			 		: (pawn.Downed ? Rand.Value < 0.93 : true))
     				? thing : null);
         		return;
         	}
