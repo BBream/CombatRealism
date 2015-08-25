@@ -35,7 +35,7 @@ namespace Combat_Realism
             float estimationDeviation = (cpCustom.scope ? 0.5f : 1f) * (float)(Math.Pow(actualRange, 2) / (50 * 100)) * (float)Math.Pow((double)this.caster.GetStatValue(StatDefOf.ShootingAccuracy), -2);
             float targetDistance = Mathf.Clamp(Rand.Gaussian(actualRange, estimationDeviation), actualRange - (3 * estimationDeviation), actualRange + (3 * estimationDeviation));
 
-            targetLoc = (targetLoc - sourceLoc).normalized * targetDistance;
+            targetLoc = sourceLoc + (targetLoc - sourceLoc).normalized * targetDistance;
 
             Log.Message("targetLoc after estimate range: " + targetLoc.ToString());
 
