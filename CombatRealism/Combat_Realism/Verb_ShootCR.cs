@@ -16,7 +16,7 @@ namespace Combat_Realism
         /// <summary>
         /// Shifts the original target position in accordance with target leading, range estimation and weather/lighting effects
         /// </summary>
-        private Vector3 EstimateTarget()
+        private Vector3 ShiftTarget()
         {
             Vector3 targetLoc = this.currentTarget.Cell.ToVector3();
 
@@ -42,8 +42,8 @@ namespace Combat_Realism
                 targetLoc += moveVec * Verse.Rand.Gaussian(leadDistance, leadDistance * leadVariation);
             }
 
-            //Shift for weather/lighting
-            float shiftDistance = 0;
+            //Shift for weather/lighting/recoil
+            float shiftDistance = this.GetRecoilAmount();
             if (!this.caster.Position.Roofed() || !targetLoc.ToIntVec3().Roofed())  //Change to more accurate algorithm?
             {
                 shiftDistance += targetDistance * 1 - Find.WeatherManager.CurWeatherAccuracyMultiplier;
@@ -126,9 +126,24 @@ namespace Combat_Realism
         	return Math.Sin((Find.TickManager.TicksAbs / 60) + rangeVariation) * Math.Log(Math.Pow(this.caster.GetStatValue(StatDefOf.ShootingAccuracy),-3), 8);
         }
         
-        private int RecoilAmount()
+        /// <summary>
+        /// Calculates the amount of recoil at a given point in a burst
+        /// </summary>
+        private float GetRecoilAmount()
         {
-        	int currentBurst = (this.verbProps.burstShotCount - this.burstShotsLeft);
+            float recoilAmount = 0;
+        	int currentBurst = (this.verbProps.burstShotCount - this.burstShotsLeft) <= 10 ? (this.verbProps.burstShotCount - this.burstShotsLeft) - 1 : 10;
+            if (this.verbProps.forcedMissRadius > 0)
+            {
+                if (this.CasterIsPawn)
+                {
+                    recoilAmount += this.verbProps.forcedMissRadius * (1 - this.CasterPawn.GetStatValue(StatDefOf.ShootingAccuracy)) * currentBurst;
+                }
+                else
+                {
+                    recoilAmount += this.verbProps.forcedMissRadius * 0.02f * currentBurst;
+                }
+            }
         	return 0;
         }
         
@@ -138,22 +153,22 @@ namespace Combat_Realism
         /// <returns>True for successful shot</returns>
         protected bool TryCastShot(float forcedMissRadius, float rangeFactor)
         {
-        	/*
-        	 * Things to add:
-        	 * 
- 			 * shooter inaccuracy,
- 			 * 		>> THIS IS ShooterInaccuracyVariation
-			 * shooter ability to estimate range,
-			 * 		>> THIS IS ShooterRangeEstimation
-			 * shooter ability to lead,
-			 * 		++ NoImageAvailable did this
-			 * additional inaccuracies from weather and lighting
-			 * 		++ NoImageAvailable is doing this
-			 * recoil
-			 * -- int currentBurst = (this.verbProps.burstShotCount - this.burstShotsLeft)
-			 * shooter ability to handle recoil
-        	 */
-        	
+            /*
+             * Things to add:
+             * 
+             * shooter inaccuracy,
+             * 		++ Alistaire did this
+             * shooter ability to estimate range,
+             * 		++ Alistaire/NoImageAvailable did this
+             * shooter ability to lead,
+             * 		++ NoImageAvailable did this
+             * additional inaccuracies from weather and lighting
+             * 		++ NoImageAvailable did this
+             * recoil
+             * -- int currentBurst = (this.verbProps.burstShotCount - this.burstShotsLeft)
+             * shooter ability to handle recoil
+             */
+
             ShootLine shootLine;
             if (!base.TryFindShootLineFromTo(this.caster.Position, this.currentTarget, out shootLine))
             {
