@@ -210,7 +210,7 @@ namespace Combat_Realism
         	if (pawn.def.race.body == pawnTarg.def.race.body
         	    || (pawn.BodySize >= pawnTarg.BodySize
         	    || (pawn.BodySize >= 0.5 * pawnTarg.BodySize && (!pawn.Downed && this.targetDownedOnSpawn)))
-        	    || Rand.Value > pawn.BodySize / pawnTarg.BodySize)
+        	    || Rand.Value < pawn.BodySize / pawnTarg.BodySize)
         	{
         		this.ImpactThroughBodySize(thing);
         	}
