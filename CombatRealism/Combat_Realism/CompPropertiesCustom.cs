@@ -11,8 +11,8 @@ namespace Combat_Realism
 	/// </summary>
 	public class CompPropertiesCustom : CompProperties
 	{
-		public float moaValue = 0.1f;
-		public float recoil = 0.1f;
+		public float moaValue = 0;
+		public float recoil = 0;
 		public bool scope = false;
 		
 		public CompPropertiesCustom() : base()

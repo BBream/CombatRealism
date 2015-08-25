@@ -84,16 +84,18 @@ namespace Combat_Realism
         private float GetRecoilAmount()
         {
             float recoilAmount = 0;
+            CompPropertiesCustom cpCustom = (CompPropertiesCustom)this.ownerEquipment.def.GetCompProperties(typeof(CompAim));
+            
         	int currentBurst = (this.verbProps.burstShotCount - this.burstShotsLeft) <= 10 ? (this.verbProps.burstShotCount - this.burstShotsLeft) - 1 : 10;
-            if (this.verbProps.forcedMissRadius > 0)
+            if (cpCustom.recoil > 0)
             {
                 if (this.CasterIsPawn)
                 {
-                    recoilAmount += this.verbProps.forcedMissRadius * (1 - this.CasterPawn.GetStatValue(StatDefOf.ShootingAccuracy)) * currentBurst;
+                    recoilAmount += cpCustom.recoil * (1 - this.CasterPawn.GetStatValue(StatDefOf.ShootingAccuracy)) * currentBurst;
                 }
                 else
                 {
-                    recoilAmount += this.verbProps.forcedMissRadius * 0.02f * currentBurst;
+                    recoilAmount += cpCustom.recoil * 0.02f * currentBurst;
                 }
             }
         	return recoilAmount;
