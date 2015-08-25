@@ -52,7 +52,7 @@ namespace Combat_Realism
             {
                 shiftDistance += targetDistance * 0.2f;
             }
-            targetLoc += new Vector3(Rand.Range(-shiftDistance, shiftDistance), Rand.Range(-shiftDistance, shiftDistance));
+            targetLoc += new Vector3(Rand.Range(-shiftDistance, shiftDistance), 0, Rand.Range(-shiftDistance, shiftDistance));
 
             return targetLoc;
         }
@@ -115,7 +115,8 @@ namespace Combat_Realism
         }
 
         /// <summary>
-        /// Creates a sine based variation in shot angle, call only if this.caster is a pawn
+        /// Creates a sine based variation in shot angle
+        /// Call only if this.caster is a Pawn
         /// </summary>
         private double ShooterInaccuracyVariation()
         {
@@ -220,39 +221,15 @@ namespace Combat_Realism
                 }
             }
 
-            HitReport hitReport = this.HitReportForModRange(this.currentTarget, rangeFactor);
-
-            //Wild Shot
-            if (Rand.Value > hitReport.TotalNonWildShotChance)
-            {
-                shootLine.ChangeDestToMissWild();
-                projectile.canFreeIntercept = true;
-                TargetInfo target = shootLine.Dest;
-                if (!projectile.def.projectile.flyOverhead)
-                {
-                    target = Utility.determineImpactPosition(this.caster.Position, shootLine.Dest, (int)(this.currentTarget.Cell - this.caster.Position).LengthHorizontal / 2);
-                }
-                projectile.Launch(this.caster, casterExactPosition, target, this.ownerEquipment);
-                return true;
-            }
-
-            //Cover Shot
-            if (Rand.Value > hitReport.HitChanceThroughCover && this.currentTarget.Thing != null && this.currentTarget.Thing.def.category == ThingCategory.Pawn)
-            {
-                Thing thing = hitReport.covers.RandomElementByWeight((CoverInfo c) => c.BlockChance).Thing;
-                projectile.canFreeIntercept = true;
-                projectile.Launch(this.caster, casterExactPosition, new TargetInfo(thing), this.ownerEquipment);
-                return true;
-            }
-
-            //Hit
+            //New aiming algorithm
+            projectile.canFreeIntercept = true;
             if (this.currentTarget.Thing != null)
             {
-                projectile.Launch(this.caster, casterExactPosition, new TargetInfo(this.currentTarget.Thing), this.ownerEquipment);
+                projectile.Launch(this.caster, casterExactPosition, new TargetInfo(this.currentTarget.Thing), this.ownerEquipment, this.ShiftTarget());
             }
             else
             {
-                projectile.Launch(this.caster, casterExactPosition, new TargetInfo(shootLine.Dest), this.ownerEquipment);
+                projectile.Launch(this.caster, casterExactPosition, new TargetInfo(shootLine.Dest), this.ownerEquipment, this.ShiftTarget());
             }
             return true;
         }
