@@ -199,9 +199,27 @@ namespace Combat_Realism
         	this.Impact(thing);
         }
         
+		/// <summary>
+		/// Checks a new suggested target with the old target and decides whether it should go through an ImpactThroughBodySize
+		/// Can only be called when this.assignedTarget exists
+		/// </summary>
+        private void ImpactThroughBodySizeCheckWithTarget(Thing thing)
+        {
+        	Pawn pawn = thing as Pawn;
+        	Pawn pawnTarg = this.assignedTarget as Pawn;
+        	if (pawn.def.race.body == pawnTarg.def.race.body
+        	    || (pawn.BodySize >= pawnTarg.BodySize
+        	    || (pawn.BodySize >= 0.5 * pawnTarg.BodySize && (!pawn.Downed && this.targetDownedOnSpawn)))
+        	    || Rand.Value > pawn.BodySize / pawnTarg.BodySize)
+        	{
+        		this.ImpactThroughBodySize(thing);
+        	}
+        	this.Impact(null);
+        }
+        
 		private void ImpactSomething()
 		{
-				//Not modified
+				//Not modified, just mortar code
 			if (this.def.projectile.flyOverhead)
 			{
 				RoofDef roofDef = Find.RoofGrid.RoofAt(base.Position);
@@ -213,18 +231,22 @@ namespace Combat_Realism
 				}
 			}
 				//Modified
-			if (this.assignedTarget != null)
+			if (this.assignedTarget != null && this.assignedTarget.Position == this.Position)	//it was aimed at something and that something is still there
 			{
 				this.ImpactThroughBodySize(this.assignedTarget);
 				return;
 			}
-				//Slightly modified
 			else
 			{
 				Thing thing = Find.ThingGrid.ThingAt(base.Position, ThingCategory.Pawn);
 				if (thing != null)
 				{
-					this.ImpactThroughBodySize(thing);
+					if (this.assignedTarget != null)
+					{
+						this.ImpactThroughBodySizeCheckWithTarget(thing);
+						return;
+					}
+					this.Impact(thing);
 					return;
 				}
 				List<Thing> list = Find.ThingGrid.ThingsListAt(base.Position);
@@ -233,7 +255,7 @@ namespace Combat_Realism
 					Thing thing2 = list[i];
 					if (thing2.def.fillPercent > 0f || thing2.def.passability != Traversability.Standable)
 					{
-						this.ImpactThroughBodySize(thing2);
+						this.Impact(thing2);
 						return;
 					}
 				}
