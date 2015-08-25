@@ -10,6 +10,7 @@ namespace Combat_Realism
         private float ShooterRangeEstimation(Vector3 source, Vector3 target)
         {
             float actualRange = Vector3.Distance(target, source);
+            float estimatedRange = (float)(Math.Pow(actualRange, 2) / (50 * 100)) * (float)Math.Pow((double)this.caster.GetStatValue(StatDefOf.ShootingAccuracy), -2);
             return Rand.Gaussian(actualRange, (float)(Math.Pow(actualRange, 2) / (50 * 100)) * (float)Math.Pow((double)this.caster.GetStatValue(StatDefOf.ShootingAccuracy), -2));
         }
 
@@ -22,14 +23,20 @@ namespace Combat_Realism
             float randomSkew = 0f;
             Vector3 sourceLoc = this.caster.Position.ToVector3();
 
+            //Initialize cpCustom here so it can be called later on
+            CompPropertiesCustom cpCustom = null;
+            if (this.ownerEquipment.def.HasComp(typeof(CompAim)))
+            {
+                cpCustom = (CompPropertiesCustom)this.ownerEquipment.def.GetCompProperties(typeof(CompAim));
+            }
+
             //Estimate range
             float targetDistance = ShooterRangeEstimation(sourceLoc, this.currentTarget.Cell.ToVector3());
             targetLoc = (this.currentTarget.Cell.ToVector3() - this.caster.DrawPos).normalized * targetDistance;
 
             //Get shotvariation
-            if (this.ownerEquipment.def.HasComp(typeof(CompAim)))
+            if (cpCustom != null)
             {
-            	CompPropertiesCustom cpCustom = (CompPropertiesCustom)this.ownerEquipment.def.GetCompProperties(typeof(CompAim));
             	randomSkew += Rand.Range(-cpCustom.moaValue, cpCustom.moaValue);
             }
             
@@ -53,7 +60,10 @@ namespace Combat_Realism
                 float leadVariation = 0;
                 if (this.CasterIsPawn)
                 {
-                    leadVariation = 1 - this.CasterPawn.GetStatValue(StatDefOf.ShootingAccuracy, false);
+                    if (cpCustom != null)
+                    {
+                        leadVariation = cpCustom.scope ? (1 - this.CasterPawn.GetStatValue(StatDefOf.ShootingAccuracy, false)) / 4 : 1 - this.CasterPawn.GetStatValue(StatDefOf.ShootingAccuracy, false);
+                    }
                 }
                 //targetLoc += moveVec * Rand.Gaussian(leadDistance, leadDistance * leadVariation);		GAUSSIAN removed for now
                 targetLoc += moveVec * (leadDistance + Rand.Range(-leadVariation, leadVariation));
