@@ -14,8 +14,10 @@ namespace Combat_Realism
         {
             Pawn targetPawn = this.currentTarget.Thing as Pawn;
             Pawn sourcePawn = this.caster as Pawn;
-            Vector3 targetLoc = targetPawn != null ? targetPawn.DrawPos : this.currentTarget.Cell.ToVector3();
+            Vector3 targetLoc = targetPawn != null ? targetPawn.DrawPos : this.currentTarget.Thing.Position.ToVector3();
             Vector3 sourceLoc = sourcePawn != null ? sourcePawn.DrawPos : this.caster.Position.ToVector3();
+            targetLoc.Scale(new Vector3(1, 0, 1));
+            sourceLoc.Scale(new Vector3(1, 0, 1));
 
             Log.Message("targetLoc after initialize: " + targetLoc.ToString());
 
