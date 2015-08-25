@@ -7,13 +7,6 @@ namespace Combat_Realism
 {
 	public class Verb_ShootCR : Verse.Verb_Shoot
 	{
-        private float ShooterRangeEstimation(Vector3 source, Vector3 target)
-        {
-            float actualRange = Vector3.Distance(target, source);
-            float estimationDeviation = (float)(Math.Pow(actualRange, 2) / (50 * 100)) * (float)Math.Pow((double)this.caster.GetStatValue(StatDefOf.ShootingAccuracy), -2);
-            return Mathf.Clamp(Rand.Gaussian(actualRange, estimationDeviation), actualRange - 3 * estimationDeviation, actualRange + 3 * estimationDeviation);
-        }
-
         /// <summary>
         /// Shifts the original target position in accordance with target leading, range estimation and weather/lighting effects
         /// </summary>
@@ -31,7 +24,10 @@ namespace Combat_Realism
             }
 
             //Estimate range
-            float targetDistance = ShooterRangeEstimation(sourceLoc, this.currentTarget.Cell.ToVector3());
+            float actualRange = Vector3.Distance(this.currentTarget.Cell.ToVector3(), sourceLoc);
+            float estimationDeviation = (cpCustom.scope ? 0.5f : 1f) * (float)(Math.Pow(actualRange, 2) / (50 * 100)) * (float)Math.Pow((double)this.caster.GetStatValue(StatDefOf.ShootingAccuracy), -2);
+            float targetDistance = Mathf.Clamp(Rand.Gaussian(actualRange, estimationDeviation), actualRange - 3 * estimationDeviation, actualRange + 3 * estimationDeviation);
+            
             targetLoc = (this.currentTarget.Cell.ToVector3() - this.caster.DrawPos).normalized * targetDistance;
 
             //Get shotvariation
