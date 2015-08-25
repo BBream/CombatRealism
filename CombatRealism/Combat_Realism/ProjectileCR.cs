@@ -189,11 +189,24 @@ namespace Combat_Realism
         	Pawn pawn = thing as Pawn;
         	if (pawn != null)
         	{
-        		this.Impact(
-    				(pawn.Downed != this.targetDownedOnSpawn
-        			 ? Rand.Value < (pawn.BodySize >= 1.6 ? (pawn.BodySize - 0.5) / pawn.BodySize : (pawn.RaceProps.body.defName == "Human" ? 0.8 : 0.7))
-    			 		: (pawn.Downed ? Rand.Value < 0.93 : true))
-    				? thing : null);
+        		if (pawn.Downed != this.targetDownedOnSpawn)
+        		{
+        			double checkNr;
+        			if (pawn.BodySize >= 1.666)		//Why 1.666? that's the point at which (X - 0.5) / X = 0.7
+        			{
+        				checkNr = (pawn.BodySize - 0.5) / pawn.BodySize;
+        			}
+        			else
+        			{
+        					//This makes two lines (1.666, 0.7) -> (1.0, 0.8) -> (0.0, 1.0)
+        				checkNr = (pawn.BodySize < 1 ? 1 : 0.95) - (pawn.BodySize < 1 ? 0.2 : 0.15) * pawn.BodySize;
+        			}
+        			this.Impact(Rand.Value < checkNr ? thing : null);
+        		}
+        		else
+        		{
+        			this.Impact((pawn.Downed ? Rand.Value < 0.93 : true) ? thing : null);
+        		}
         		return;
         	}
         	this.Impact(thing);
