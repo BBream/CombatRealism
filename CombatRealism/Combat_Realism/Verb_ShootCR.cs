@@ -185,7 +185,7 @@ namespace Combat_Realism
                 return false;
             }
             Vector3 casterExactPosition = this.caster.DrawPos;
-            Projectile projectile = (Projectile)ThingMaker.MakeThing(this.verbProps.projectileDef, null);
+            ProjectileCR projectile = (ProjectileCR)ThingMaker.MakeThing(this.verbProps.projectileDef, null);
             GenSpawn.Spawn(projectile, shootLine.Source);
             float lengthHorizontalSquared = (this.currentTarget.Cell - this.caster.Position).LengthHorizontalSquared;
 
@@ -234,11 +234,11 @@ namespace Combat_Realism
             projectile.canFreeIntercept = true;
             if (this.currentTarget.Thing != null)
             {
-                projectile.Launch(this.caster, casterExactPosition, new TargetInfo(this.currentTarget.Thing), this.ownerEquipment, this.ShiftTarget());
+                projectile.Launch(this.caster, casterExactPosition, new TargetInfo(this.currentTarget.Thing), this.ShiftTarget(), this.ownerEquipment);
             }
             else
             {
-                projectile.Launch(this.caster, casterExactPosition, new TargetInfo(shootLine.Dest), this.ownerEquipment, this.ShiftTarget());
+                projectile.Launch(this.caster, casterExactPosition, new TargetInfo(shootLine.Dest), this.ShiftTarget(), this.ownerEquipment);
             }
             return true;
         }

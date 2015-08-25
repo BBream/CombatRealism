@@ -56,13 +56,20 @@ namespace Combat_Realism
 					this.targetDownedOnSpawn = pawn.Downed;
 				}
 			}
-			this.destination = targ.Cell.ToVector3Shifted() + new Vector3(Rand.Range(-0.3f, 0.3f), 0f, Rand.Range(-0.3f, 0.3f));
+			if (this.destination == null)
+				this.destination = targ.Cell.ToVector3Shifted() + new Vector3(Rand.Range(-0.3f, 0.3f), 0f, Rand.Range(-0.3f, 0.3f));
+			
 			this.ticksToImpact = this.StartingTicksToImpact;
 			if (!this.def.projectile.soundAmbient.NullOrUndefined())
 			{
 				SoundInfo info = SoundInfo.InWorld(this, MaintenanceType.PerTick);
 				this.ambientSustainer = this.def.projectile.soundAmbient.TrySpawnSustainer(info);
 			}
+		}
+		public void Launch(Thing launcher, Vector3 origin, TargetInfo targ, Vector3 target, Thing equipment = null)
+		{
+			this.destination = target;
+			Launch(launcher, origin, targ, equipment);
 		}
 		
 		// CUSTOM CHECKFORFREEINTERCEPTBETWEEN
