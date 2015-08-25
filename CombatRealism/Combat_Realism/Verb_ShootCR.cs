@@ -77,63 +77,6 @@ namespace Combat_Realism
             
             return targetLoc;
         }
-
-        //Custom HitReportFor with scaleable range penalties
-        public virtual HitReport HitReportForModRange(TargetInfo target)
-        {
-            return HitReportForModRange(target, 1);
-        }
-
-        public HitReport HitReportForModRange(TargetInfo target, float rangeFactor)
-        {
-            IntVec3 cell = target.Cell;
-            HitReport hitReport = new HitReport();
-            hitReport.shotDistance = (cell - this.caster.Position).LengthHorizontal;
-            hitReport.target = target;
-            if (!this.verbProps.canMiss)
-            {
-                hitReport.hitChanceThroughPawnStat = 0.99f; //Down from 1 so turrets no longer ignore range penalties
-                hitReport.covers = new List<CoverInfo>();
-                hitReport.coversOverallBlockChance = 0f;
-            }
-            else
-            {
-                float f = 1f;
-                if (base.CasterIsPawn)
-                {
-                    f = base.CasterPawn.GetStatValue(StatDefOf.ShootingAccuracy, true);
-                }
-                hitReport.hitChanceThroughPawnStat = Mathf.Pow(f, hitReport.shotDistance * rangeFactor); //Modifiable long range accuracy
-                if (hitReport.hitChanceThroughPawnStat < 0.0201f)
-                {
-                    hitReport.hitChanceThroughPawnStat = 0.0201f;
-                }
-                if (base.CasterIsPawn)
-                {
-                    hitReport.hitChanceThroughSightEfficiency = base.CasterPawn.health.capacities.GetEfficiency(PawnCapacityDefOf.Sight);
-                }
-                hitReport.hitChanceThroughEquipment = this.verbProps.HitMultiplierAtDist(hitReport.shotDistance, this.ownerEquipment);
-                hitReport.forcedMissRadius = this.verbProps.forcedMissRadius;
-                hitReport.covers = CoverUtility.CalculateCoverGiverSet(cell, this.caster.Position);
-                hitReport.coversOverallBlockChance = CoverUtility.CalculateOverallBlockChance(cell, this.caster.Position);
-                hitReport.targetLighting = Find.GlowGrid.PsychGlowAt(cell);
-                if (!this.caster.Position.Roofed() && !target.Cell.Roofed())
-                {
-                    hitReport.hitChanceThroughWeather = Find.WeatherManager.CurWeatherAccuracyMultiplier;
-                }
-                if (target.HasThing)
-                {
-                    Pawn pawn = target.Thing as Pawn;
-                    if (pawn != null)
-                    {
-                        float num = pawn.BodySize;
-                        num = Mathf.Clamp(num, 0.5f, 2f);
-                        hitReport.hitChanceThroughTargetSize = num;
-                    }
-                }
-            }
-            return hitReport;
-        }
         
         /// <summary>
         /// Calculates the amount of recoil at a given point in a burst
@@ -153,7 +96,7 @@ namespace Combat_Realism
                     recoilAmount += this.verbProps.forcedMissRadius * 0.02f * currentBurst;
                 }
             }
-        	return 0;
+        	return recoilAmount;
         }
         
         /// <summary>
