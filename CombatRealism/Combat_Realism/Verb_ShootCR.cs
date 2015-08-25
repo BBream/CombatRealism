@@ -13,12 +13,13 @@ namespace Combat_Realism
         private Vector3 ShiftTarget()
         {
             Pawn targetPawn = this.currentTarget.Thing as Pawn;
+            Pawn sourcePawn = this.caster as Pawn;
             Vector3 targetLoc = targetPawn != null ? targetPawn.DrawPos : this.currentTarget.Cell.ToVector3();
+            Vector3 sourceLoc = sourcePawn != null ? sourcePawn.DrawPos : this.caster.Position.ToVector3();
 
             Log.Message("targetLoc after initialize: " + targetLoc.ToString());
 
             float randomSkew = 0f;
-            Vector3 sourceLoc = this.caster.Position.ToVector3();
 
             //Initialize cpCustom here so it can be called later on
             CompPropertiesCustom cpCustom = null;
@@ -28,11 +29,11 @@ namespace Combat_Realism
             }
 
             //Estimate range
-            float actualRange = Vector3.Distance(this.currentTarget.Cell.ToVector3(), sourceLoc);
+            float actualRange = Vector3.Distance(targetLoc, sourceLoc);
             float estimationDeviation = (cpCustom.scope ? 0.5f : 1f) * (float)(Math.Pow(actualRange, 2) / (50 * 100)) * (float)Math.Pow((double)this.caster.GetStatValue(StatDefOf.ShootingAccuracy), -2);
-            float targetDistance = Mathf.Clamp(Rand.Gaussian(actualRange, estimationDeviation), actualRange - 3 * estimationDeviation, actualRange + 3 * estimationDeviation);
+            float targetDistance = Mathf.Clamp(Rand.Gaussian(actualRange, estimationDeviation), actualRange - (3 * estimationDeviation), actualRange + (3 * estimationDeviation));
 
-            targetLoc = (this.currentTarget.Cell.ToVector3() - this.caster.DrawPos).normalized * targetDistance;
+            targetLoc = (targetLoc - sourceLoc).normalized * targetDistance;
 
             Log.Message("targetLoc after estimate range: " + targetLoc.ToString());
 
