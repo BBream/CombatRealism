@@ -12,7 +12,11 @@ namespace Combat_Realism
         /// </summary>
         private Vector3 ShiftTarget()
         {
-            Vector3 targetLoc = this.currentTarget.Cell.ToVector3();
+            Pawn targetPawn = this.currentTarget.Thing as Pawn;
+            Vector3 targetLoc = targetPawn != null ? targetPawn.DrawPos : this.currentTarget.Cell.ToVector3();
+
+            Log.Message("targetLoc after initialize: " + targetLoc.ToString());
+
             float randomSkew = 0f;
             Vector3 sourceLoc = this.caster.Position.ToVector3();
 
@@ -27,8 +31,10 @@ namespace Combat_Realism
             float actualRange = Vector3.Distance(this.currentTarget.Cell.ToVector3(), sourceLoc);
             float estimationDeviation = (cpCustom.scope ? 0.5f : 1f) * (float)(Math.Pow(actualRange, 2) / (50 * 100)) * (float)Math.Pow((double)this.caster.GetStatValue(StatDefOf.ShootingAccuracy), -2);
             float targetDistance = Mathf.Clamp(Rand.Gaussian(actualRange, estimationDeviation), actualRange - 3 * estimationDeviation, actualRange + 3 * estimationDeviation);
-            
+
             targetLoc = (this.currentTarget.Cell.ToVector3() - this.caster.DrawPos).normalized * targetDistance;
+
+            Log.Message("targetLoc after estimate range: " + targetLoc.ToString());
 
             //Get shotvariation
             if (cpCustom != null)
@@ -44,11 +50,8 @@ namespace Combat_Realism
 	        randomSkew += (float)Math.Sin((Find.TickManager.TicksAbs / 60) + rangeVariation) * (float)Math.Log(Math.Pow(this.caster.GetStatValue(StatDefOf.ShootingAccuracy),-3), 8);
             
             //Lead a moving target
-            Pawn targetPawn = this.currentTarget.Thing as Pawn;
             if (targetPawn != null && targetPawn.pather.Moving)
             {
-                targetLoc = targetPawn.DrawPos;
-
                 float timeToTarget = targetDistance / this.verbProps.projectileDef.projectile.speed;
                 float leadDistance = targetPawn.GetStatValue(StatDefOf.MoveSpeed, false) * timeToTarget;
                 Vector3 moveVec = targetPawn.pather.nextCell.ToVector3() - targetPawn.DrawPos;
@@ -63,10 +66,14 @@ namespace Combat_Realism
                 }
                 //targetLoc += moveVec * Rand.Gaussian(leadDistance, leadDistance * leadVariation);		GAUSSIAN removed for now
                 targetLoc += moveVec * (leadDistance + Rand.Range(-leadVariation, leadVariation));
+
+                Log.Message("targetLoc after lead: " + targetLoc.ToString());
             }
             
             //Skewing		-		Applied after the leading calculations to not screw them up
             targetLoc = sourceLoc + (Quaternion.AngleAxis(randomSkew, Vector3.up) * (targetLoc - sourceLoc));
+
+            Log.Message("targetLoc after skewing: " + targetLoc.ToString());
 
             //Shift for weather/lighting/recoil
             float shiftDistance = this.GetRecoilAmount();
@@ -80,6 +87,8 @@ namespace Combat_Realism
             }
             //Last modification of the loc, a random rectangle
             targetLoc += new Vector3(Rand.Range(-shiftDistance, shiftDistance), 0, Rand.Range(-shiftDistance, shiftDistance));
+
+            Log.Message("targetLoc after shifting: " + targetLoc.ToString());
             
             return targetLoc;
         }

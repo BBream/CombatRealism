@@ -45,6 +45,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Combat_Realism\BulletCR.cs" />
     <Compile Include="Combat_Realism\CompAim.cs" />
     <Compile Include="Combat_Realism\CompPropertiesCustom.cs" />
     <Compile Include="Combat_Realism\CompTurretInit.cs" />
