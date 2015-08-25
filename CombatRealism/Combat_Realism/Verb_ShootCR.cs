@@ -10,8 +10,8 @@ namespace Combat_Realism
         private float ShooterRangeEstimation(Vector3 source, Vector3 target)
         {
             float actualRange = Vector3.Distance(target, source);
-            float estimatedRange = (float)(Math.Pow(actualRange, 2) / (50 * 100)) * (float)Math.Pow((double)this.caster.GetStatValue(StatDefOf.ShootingAccuracy), -2);
-            return Rand.Gaussian(actualRange, (float)(Math.Pow(actualRange, 2) / (50 * 100)) * (float)Math.Pow((double)this.caster.GetStatValue(StatDefOf.ShootingAccuracy), -2));
+            float estimationDeviation = (float)(Math.Pow(actualRange, 2) / (50 * 100)) * (float)Math.Pow((double)this.caster.GetStatValue(StatDefOf.ShootingAccuracy), -2);
+            return Mathf.Clamp(Rand.Gaussian(actualRange, estimationDeviation), actualRange - 3 * estimationDeviation, actualRange + 3 * estimationDeviation);
         }
 
         /// <summary>
