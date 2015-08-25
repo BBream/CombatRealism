@@ -1,12 +1,4 @@
-﻿/*
- * Created by SharpDevelop.
- * User: tijn
- * Date: 24-8-2015
- * Time: 11:52
- * 
- * To change this template use Tools | Options | Coding | Edit Standard Headers.
- */
-using RimWorld;
+﻿using RimWorld;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -145,7 +137,16 @@ namespace Combat_Realism
                     }
                     if (thing.def.category == ThingCategory.Pawn)
                     {
-                        Pawn pawn = (Pawn)thing;
+                    	if (this.assignedTarget != null)
+                    	{
+                    		Pawn pawnTarg = this.assignedTarget as Pawn;
+                    		if (pawnTarg != null)
+                    		{
+	                    		return ImpactThroughBodySizeCheckWithTarget(thing, 0.45f);	//Added a factor for collaterals, hardcoded
+                    		}
+                    	}
+                    	
+                        /*Pawn pawn = (Pawn)thing;
                         float collateralChance = 0.45f;
                         if (pawn.GetPosture() != PawnPosture.Standing)
                         {
@@ -168,7 +169,7 @@ namespace Combat_Realism
                         {
                             this.Impact(pawn);
                             return true;
-                        }
+                        }*/
                     }
                     if (Rand.Value < thing.def.fillPercent)
                     {
@@ -184,7 +185,7 @@ namespace Combat_Realism
 		/// <summary>
 		/// Takes into account the target being downed and the projectile having been fired while the target was downed, and the target's bodySize
 		/// </summary>
-        private void ImpactThroughBodySize(Thing thing)
+        private bool ImpactThroughBodySize(Thing thing, float factor = 1)
         {
         	Pawn pawn = thing as Pawn;
         	if (pawn != null)
@@ -201,22 +202,32 @@ namespace Combat_Realism
         					//This makes two lines (1.666, 0.7) -> (1.0, 0.8) -> (0.0, 1.0)
         				checkNr = (pawn.BodySize < 1 ? 1 : 0.95) - (pawn.BodySize < 1 ? 0.2 : 0.15) * pawn.BodySize;
         			}
-        			this.Impact(Rand.Value < checkNr ? thing : null);
+        			bool hit = Rand.Value < checkNr * factor;
+        			this.Impact(hit ? thing : null);
+        			return hit;
         		}
         		else
         		{
-        			this.Impact((pawn.Downed ? Rand.Value < 0.93 : true) ? thing : null);
+        			bool hit = pawn.Downed ? Rand.Value < 0.93 * factor : true;
+        			this.Impact(hit ? thing : null);
+        			return hit;
         		}
-        		return;
         	}
-        	this.Impact(thing);
+        	if ((factor != 1 && Rand.Value < factor) || true)
+        	{
+        		this.Impact(thing);
+        		return true;
+        	}
+        	
+        	this.Impact(null);
+        	return false;
         }
         
 		/// <summary>
 		/// Checks a new suggested target with the old target and decides whether it should go through an ImpactThroughBodySize
 		/// Can only be called when this.assignedTarget exists
 		/// </summary>
-        private void ImpactThroughBodySizeCheckWithTarget(Thing thing)
+        private bool ImpactThroughBodySizeCheckWithTarget(Thing thing, float factor = 1)
         {
         	Pawn pawn = thing as Pawn;
         	Pawn pawnTarg = this.assignedTarget as Pawn;
@@ -225,9 +236,10 @@ namespace Combat_Realism
         	    || (pawn.BodySize >= 0.5 * pawnTarg.BodySize && (!pawn.Downed && this.targetDownedOnSpawn)))
         	    || Rand.Value < pawn.BodySize / pawnTarg.BodySize)
         	{
-        		this.ImpactThroughBodySize(thing);
+        		return this.ImpactThroughBodySize(thing, factor);
         	}
         	this.Impact(null);
+        	return false;
         }
         
 		private void ImpactSomething()

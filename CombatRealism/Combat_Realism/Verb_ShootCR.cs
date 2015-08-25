@@ -19,11 +19,27 @@ namespace Combat_Realism
         private Vector3 ShiftTarget()
         {
             Vector3 targetLoc = this.currentTarget.Cell.ToVector3();
+            float randomSkew = 0f;
+            Vector3 sourceLoc = this.caster.Position.ToVector3();
 
             //Estimate range
-            float targetDistance = ShooterRangeEstimation(this.caster.Position.ToVector3(), this.currentTarget.Cell.ToVector3());
+            float targetDistance = ShooterRangeEstimation(sourceLoc, this.currentTarget.Cell.ToVector3());
             targetLoc = (this.currentTarget.Cell.ToVector3() - this.caster.DrawPos).normalized * targetDistance;
 
+            //Get shotvariation
+            if (this.ownerEquipment.def.HasComp(typeof(CompAim)))
+            {
+            	CompPropertiesCustom cpCustom = (CompPropertiesCustom)this.ownerEquipment.def.GetCompProperties(typeof(CompAim));
+            	randomSkew += Rand.Range(-cpCustom.moaValue, cpCustom.moaValue);
+            }
+            
+            //Get shootervariation
+	        	int prevSeed = Rand.Seed;
+		        	Rand.Seed = this.caster.thingIDNumber;
+		        	float rangeVariation = Rand.Range(0, 2);
+	        	Rand.Seed = prevSeed;
+	        randomSkew += (float)Math.Sin((Find.TickManager.TicksAbs / 60) + rangeVariation) * (float)Math.Log(Math.Pow(this.caster.GetStatValue(StatDefOf.ShootingAccuracy),-3), 8);
+            
             //Lead a moving target
             Pawn targetPawn = this.currentTarget.Thing as Pawn;
             if (targetPawn != null && targetPawn.pather.Moving)
@@ -39,8 +55,12 @@ namespace Combat_Realism
                 {
                     leadVariation = 1 - this.CasterPawn.GetStatValue(StatDefOf.ShootingAccuracy, false);
                 }
-                targetLoc += moveVec * Verse.Rand.Gaussian(leadDistance, leadDistance * leadVariation);
+                //targetLoc += moveVec * Rand.Gaussian(leadDistance, leadDistance * leadVariation);		GAUSSIAN removed for now
+                targetLoc += moveVec * (leadDistance + Rand.Range(-leadVariation, leadVariation));
             }
+            
+            //Skewing		-		Applied after the leading calculations to not screw them up
+            targetLoc = sourceLoc + (Quaternion.AngleAxis(randomSkew, Vector3.up) * (targetLoc - sourceLoc));
 
             //Shift for weather/lighting/recoil
             float shiftDistance = this.GetRecoilAmount();
@@ -52,8 +72,9 @@ namespace Combat_Realism
             {
                 shiftDistance += targetDistance * 0.2f;
             }
-            targetLoc += new Vector3(Rand.Range(-shiftDistance, shiftDistance), Rand.Range(-shiftDistance, shiftDistance));
-
+            //Last modification of the loc, a random rectangle
+            targetLoc += new Vector3(Rand.Range(-shiftDistance, shiftDistance), 0, Rand.Range(-shiftDistance, shiftDistance));
+            
             return targetLoc;
         }
 
@@ -113,18 +134,6 @@ namespace Combat_Realism
             }
             return hitReport;
         }
-
-        /// <summary>
-        /// Creates a sine based variation in shot angle, call only if this.caster is a pawn
-        /// </summary>
-        private double ShooterInaccuracyVariation()
-        {
-        	int prevSeed = Rand.Seed;
-        	Rand.Seed = this.caster.thingIDNumber;
-        	float rangeVariation = Rand.Range(0, 2);
-        	Rand.Seed = prevSeed;
-        	return Math.Sin((Find.TickManager.TicksAbs / 60) + rangeVariation) * Math.Log(Math.Pow(this.caster.GetStatValue(StatDefOf.ShootingAccuracy),-3), 8);
-        }
         
         /// <summary>
         /// Calculates the amount of recoil at a given point in a burst
@@ -165,8 +174,9 @@ namespace Combat_Realism
              * additional inaccuracies from weather and lighting
              * 		++ NoImageAvailable did this
              * recoil
-             * -- int currentBurst = (this.verbProps.burstShotCount - this.burstShotsLeft)
+             * 		-- NoImageAvailable started this
              * shooter ability to handle recoil
+             * 		-- NoImageAvailable started this
              */
 
             ShootLine shootLine;
