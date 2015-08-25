@@ -126,15 +126,12 @@ namespace Combat_Realism
         	return Math.Sin((Find.TickManager.TicksAbs / 60) + rangeVariation) * Math.Log(Math.Pow(this.caster.GetStatValue(StatDefOf.ShootingAccuracy),-3), 8);
         }
         
-<<<<<<< HEAD
         private int RecoilAmount()
         {
         	int currentBurst = (this.verbProps.burstShotCount - this.burstShotsLeft);
-        	
+        	return 0;
         }
         
-=======
->>>>>>> origin/master
         /// <summary>
         /// Fires a projectile using a custom HitReportFor() method to override the vanilla one, as well as better collateral hit detection and adjustable range penalties and forcedMissRadius
         /// </summary>
@@ -150,9 +147,8 @@ namespace Combat_Realism
 			 * 		>> THIS IS ShooterRangeEstimation
 			 * shooter ability to lead,
 			 * 		++ NoImageAvailable did this
-			 * -- this.currentTarget.Thing.GetStatValue(StatDefOf.MoveSpeed, false);
 			 * additional inaccuracies from weather and lighting
-			 * 		-- NoImageAvailable is doing this
+			 * 		++ NoImageAvailable is doing this
 			 * recoil
 			 * -- int currentBurst = (this.verbProps.burstShotCount - this.burstShotsLeft)
 			 * shooter ability to handle recoil

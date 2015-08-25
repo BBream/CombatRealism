@@ -22,7 +22,8 @@ namespace Combat_Realism
 	{
 		private Sustainer ambientSustainer;		//required for the Launch sounds
         private static List<IntVec3> checkedCells = new List<IntVec3>();
-		
+		private bool targetDownedOnSpawn = false;
+        
 		/*
 		 * Things to add:
 		 * 
@@ -57,6 +58,11 @@ namespace Combat_Realism
 			if (targ.Thing != null)
 			{
 				this.assignedTarget = targ.Thing;
+				Pawn pawn = this.assignedTarget as Pawn;
+				if (pawn != null)
+				{
+					this.targetDownedOnSpawn = pawn.Downed;
+				}
 			}
 			this.destination = targ.Cell.ToVector3Shifted() + new Vector3(Rand.Range(-0.3f, 0.3f), 0f, Rand.Range(-0.3f, 0.3f));
 			this.ticksToImpact = this.StartingTicksToImpact;
@@ -68,7 +74,7 @@ namespace Combat_Realism
 		}
 		
 		// CUSTOM CHECKFORFREEINTERCEPTBETWEEN
-        new private bool CheckForFreeInterceptBetween(Vector3 lastExactPos, Vector3 newExactPos)
+        private bool CheckForFreeInterceptBetween(Vector3 lastExactPos, Vector3 newExactPos)
         {
             IntVec3 lastPos = lastExactPos.ToIntVec3();
             IntVec3 newPos = newExactPos.ToIntVec3();
@@ -119,7 +125,7 @@ namespace Combat_Realism
             return false;
         }
 
-        new private bool CheckForFreeIntercept(IntVec3 cell)
+        private bool CheckForFreeIntercept(IntVec3 cell)
         {
             float distFromOrigin = (cell.ToVector3Shifted() - this.origin).MagnitudeHorizontalSquared();
             if (distFromOrigin < 16f)
@@ -174,6 +180,73 @@ namespace Combat_Realism
             }
             return false;
         }
-
+        
+		/// <summary>
+		/// Takes into account the target being downed and the projectile having been fired while the target was downed, and the target's bodySize
+		/// </summary>
+        private void ImpactThroughBodySize(Thing thing)
+        {
+        	Pawn pawn = thing as Pawn;
+        	if (pawn != null)
+        	{
+        		this.Impact(
+    				(pawn.Downed != this.targetDownedOnSpawn
+    			 		? Rand.Value > (pawn.BodySize >= 1.6 ? (pawn.BodySize - 0.5) / pawn.BodySize : (pawn.def.race.Humanlike ? 0.8 : 0.7))
+    			 		: (pawn.Downed ? Rand.Value > 0.93 : true))
+    				? thing : null);
+        		return;
+        	}
+        	this.Impact(thing);
+        }
+        
+		private void ImpactSomething()
+		{
+				//Not modified
+			if (this.def.projectile.flyOverhead)
+			{
+				RoofDef roofDef = Find.RoofGrid.RoofAt(base.Position);
+				if (roofDef != null && roofDef.isThickRoof)
+				{
+					this.def.projectile.soundHitThickRoof.PlayOneShot(base.Position);
+					this.Destroy(DestroyMode.Vanish);
+					return;
+				}
+			}
+				//Modified
+			if (this.assignedTarget != null)
+			{
+				this.ImpactThroughBodySize(this.assignedTarget);
+				return;
+			}
+				//Slightly modified
+			else
+			{
+				Thing thing = Find.ThingGrid.ThingAt(base.Position, ThingCategory.Pawn);
+				if (thing != null)
+				{
+					this.ImpactThroughBodySize(thing);
+					return;
+				}
+				List<Thing> list = Find.ThingGrid.ThingsListAt(base.Position);
+				for (int i = 0; i < list.Count; i++)
+				{
+					Thing thing2 = list[i];
+					if (thing2.def.fillPercent > 0f || thing2.def.passability != Traversability.Standable)
+					{
+						this.ImpactThroughBodySize(thing2);
+						return;
+					}
+				}
+				this.Impact(null);
+				return;
+			}
+		}
+		
+		
+		public override void ExposeData()
+		{
+			base.ExposeData();
+			Scribe_Values.LookValue<bool>(ref this.targetDownedOnSpawn, "targetDownedOnSpawn", false, false);
+		}
 	}
 }
