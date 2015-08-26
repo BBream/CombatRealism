@@ -21,8 +21,6 @@ namespace Combat_Realism
 
             Vector3 shotVec = targetLoc - sourceLoc;    //Don't reassign this or silly things will happen
 
-            Log.Message("targetLoc after initialize: " + targetLoc.ToString());
-
             float randomSkew = 0f;
 
             //Initialize cpCustom here so it can be called later on
@@ -34,12 +32,10 @@ namespace Combat_Realism
 
             //Estimate range
             float actualRange = Vector3.Distance(targetLoc, sourceLoc);
-            float estimationDeviation = (cpCustom.scope ? 0.5f : 1f) * (float)(Math.Pow(actualRange, 2) / (50 * 100)) * (float)Math.Pow((double)this.caster.GetStatValue(StatDefOf.ShootingAccuracy), -2);
-            float targetDistance = Mathf.Clamp(Rand.Gaussian(actualRange, estimationDeviation), actualRange - (3 * estimationDeviation), actualRange + (3 * estimationDeviation));
+            float estimationDeviation = (cpCustom.scope ? 0.5f : 1f) * (this.CasterIsPawn ? (1 - this.caster.GetStatValue(StatDefOf.ShootingAccuracy, false)) * actualRange : 0.02f * actualRange);
+            float targetDistance = Mathf.Clamp(Rand.Gaussian(actualRange, estimationDeviation), actualRange - estimationDeviation, actualRange + estimationDeviation);
 
             targetLoc = sourceLoc + shotVec.normalized * targetDistance;
-
-            Log.Message("targetLoc after range: " + targetLoc.ToString());
 
             //Get shotvariation, apply recoil
             if (cpCustom != null)
@@ -78,12 +74,8 @@ namespace Combat_Realism
                 targetLoc += moveVec * (leadDistance + Rand.Range(-leadVariation, leadVariation));
             }
 
-            Log.Message("randomSkew: " + randomSkew.ToString());
-
             //Skewing		-		Applied after the leading calculations to not screw them up
             targetLoc = sourceLoc + (Quaternion.AngleAxis(randomSkew, Vector3.up) * (targetLoc - sourceLoc));	//THIS ONE REQUIRES UPDATED SHOTVECTOR
-
-            Log.Message("targetLoc after skewing: " + targetLoc.ToString());
 
             //Shift for weather/lighting/recoil
             //float shiftDistance = this.GetRecoilAmount();
