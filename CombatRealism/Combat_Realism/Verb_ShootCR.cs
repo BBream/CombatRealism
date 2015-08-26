@@ -140,7 +140,11 @@ namespace Combat_Realism
 		        	float rangeVariation = Rand.Range(0, 2);
 	        	Rand.Seed = prevSeed;
 	        //float randomSkillSkew = (float)Math.Sin((Find.TickManager.TicksAbs / 60) + rangeVariation) * (float)Math.Log(Math.Pow(shootingAccuracy,-3), 8);
-	        combinedSkew += (1 + recoilXAmount + 0.2f * Rand.Range(-recoilXAmount, recoilXAmount)) * (float)Math.Sin((Find.TickManager.TicksAbs / 60) + rangeVariation) * (float)(1 - Math.Sqrt(1.2 - shootingAccuracy));
+	        
+	        //recoilXAmount = 1 (to the right)
+	        //shooterVariation = 
+	        
+	        combinedSkew += (recoilXAmount + 0.2f * Rand.Range(-recoilXAmount, recoilXAmount)) + (float)Math.Sin((Find.TickManager.TicksAbs / 60) + rangeVariation) * (float)(1 - Math.Sqrt(1.2 - shootingAccuracy));
 	        
             Log.Message("recoil and skill Skew: " + combinedSkew.ToString());
             
