@@ -56,8 +56,15 @@ namespace Combat_Realism
             
             Log.Message("targetLoc after initialize: " + targetLoc.ToString());
             
-            //Initialize cpCustom here so it can be called later on
-            
+            // Calculating recoil before use
+            Vector2 recoil = new Vector2(0, 0);
+            if (this.cpCustomGet != null)
+            {
+            	recoil = this.GetRecoilAmount();
+	        	recoil *= (float)(1 - 0.015 * sourcePawn.skills.GetSkill(SkillDefOf.Shooting).level);	//very placeholder
+            	//recoilSkew = Rand.Range(-recoilAmount / 4, recoilAmount / 4);
+                //targetLoc += shotVec.normalized * Rand.Range(-recoilAmount / 2, recoilAmount);
+            }
             
             	// ----------------------------------- STEP 1: Estimated location
             
@@ -96,6 +103,10 @@ namespace Combat_Realism
 			
             Log.Message("targetLoc after range: " + targetLoc.ToString());
 			
+            targetLoc += shotVec.normalized * (recoil.y + 0.2f * Rand.Range(-Math.Abs(recoil.y), Math.Abs(recoil.y)));
+            
+            Log.Message("targetLoc after recoil: " + targetLoc.ToString());
+            
             //Lead a moving target
             if (targetPawn != null && targetPawn.pather.Moving)
             {
@@ -120,15 +131,6 @@ namespace Combat_Realism
             	// ----------------------------------- STEP 3: Recoil, start of skewing
            	
             float combinedSkew = 0;
-            float recoilXAmount = 0;
-            
-            if (this.cpCustomGet != null)
-            {
-            	recoilXAmount = this.GetRecoilAmount();
-	        	recoilXAmount *= (float)(1 - 0.015 * sourcePawn.skills.GetSkill(SkillDefOf.Shooting).level);	//very placeholder
-            	//recoilSkew = Rand.Range(-recoilAmount / 4, recoilAmount / 4);
-                //targetLoc += shotVec.normalized * Rand.Range(-recoilAmount / 2, recoilAmount);
-            }
             
             	// ----------------------------------- STEP 4: Skill checks
             	
@@ -142,7 +144,7 @@ namespace Combat_Realism
 	        //recoilXAmount = 1 (to the right)
 	        //shooterVariation = 
 	        
-	        combinedSkew += (recoilXAmount + 0.2f * Rand.Range(-recoilXAmount, recoilXAmount)) + (float)Math.Sin((Find.TickManager.TicksAbs / 60) + rangeVariation) * (float)(1 - Math.Sqrt(1.2 - shootingAccuracy));
+	        combinedSkew += (recoil.x + 0.2f * Rand.Range(-Math.Abs(recoil.x), Math.Abs(recoil.x))) + (float)Math.Sin((Find.TickManager.TicksAbs / 60) + rangeVariation) * (float)(1 - Math.Sqrt(1.2 - shootingAccuracy));
 	        
             Log.Message("recoil and skill Skew: " + combinedSkew.ToString());
             
@@ -164,13 +166,14 @@ namespace Combat_Realism
         /// <summary>
         /// Calculates the amount of recoil at a given point in a burst
         /// </summary>
-        private float GetRecoilAmount()
+        private Vector2 GetRecoilAmount()
         {
-            float recoilAmount = 0;
+        	Vector2 recoilAmount = new Vector2(0, 0);
+        	Vector2 recoilOffset = this.cpCustomGet.recoilOffset;
 			int currentBurst = (this.verbProps.burstShotCount - this.burstShotsLeft) <= 11 ? (this.verbProps.burstShotCount - this.burstShotsLeft) : 11;
-            if (this.cpCustomGet.recoilXOffset != 0)
+			if (!(recoilOffset.x == 0 && recoilOffset.y == 0))
             {
-            	recoilAmount += this.cpCustomGet.recoilXOffset * (2 * (float)Math.Sqrt(0.1 * currentBurst)) * (this.CasterIsPawn ? 1 : 0.5f);
+            	recoilAmount += this.cpCustomGet.recoilOffset * (2 * (float)Math.Sqrt(0.1 * currentBurst)) * (this.CasterIsPawn ? 1 : 0.5f);
                 /*if (this.CasterIsPawn)
                 {
                     recoilAmount += offset * (float)Math.Pow(currentBurst + 3, 1 - this.CasterPawn.GetStatValue(StatDefOf.ShootingAccuracy));
