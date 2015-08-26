@@ -81,7 +81,7 @@ namespace Combat_Realism
             Log.Message("randomSkew: " + randomSkew.ToString());
 
             //Skewing		-		Applied after the leading calculations to not screw them up
-            //targetLoc = sourceLoc + (Quaternion.AngleAxis(randomSkew, Vector3.up) * shotVec);
+            targetLoc = sourceLoc + (Quaternion.AngleAxis(randomSkew, Vector3.up) * (targetLoc - sourceLoc));	//THIS ONE REQUIRES UPDATED SHOTVECTOR
 
             Log.Message("targetLoc after skewing: " + targetLoc.ToString());
 
