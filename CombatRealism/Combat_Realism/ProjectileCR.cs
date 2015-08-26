@@ -7,6 +7,7 @@ using Verse;
 
 namespace Combat_Realism
 {
+<<<<<<< HEAD
     public abstract class ProjectileCR : ThingWithComps
     {
         private const float MinFreeInterceptDistance = 4f;
@@ -150,6 +151,134 @@ namespace Combat_Realism
         }
 
         //Removed minimum collision distance
+=======
+	/// <summary>
+	/// Description of ProjectileCR.
+	/// </summary>
+	public class ProjectileCR : ThingWithComps
+	{
+		private const float MinFreeInterceptDistance = 4f;
+		protected Vector3 origin;
+		protected Vector3 destination;
+		protected Thing assignedTarget;
+		public bool canFreeIntercept;
+		protected ThingDef equipmentDef;
+		protected Thing launcher;
+		private Thing assignedMissTargetInt;
+		protected bool landed;
+		protected int ticksToImpact;
+		private Sustainer ambientSustainer;
+		private static List<IntVec3> checkedCells = new List<IntVec3>();
+		private bool targetDownedOnSpawn = false;
+		public Thing AssignedMissTarget
+		{
+			get
+			{
+				return this.assignedMissTargetInt;
+			}
+			set
+			{
+				if (value.def.Fillage == FillCategory.Full)
+				{
+					return;
+				}
+				this.assignedMissTargetInt = value;
+			}
+		}
+		protected int StartingTicksToImpact
+		{
+			get
+			{
+				int num = Mathf.RoundToInt((this.origin - this.destination).magnitude / (this.def.projectile.speed / 100f));
+				if (num < 1)
+				{
+					num = 1;
+				}
+				return num;
+			}
+		}
+		protected IntVec3 DestinationCell
+		{
+			get
+			{
+				return new IntVec3(this.destination);
+			}
+		}
+		public virtual Vector3 ExactPosition
+		{
+			get
+			{
+				Vector3 b = (this.destination - this.origin) * (1f - (float)this.ticksToImpact / (float)this.StartingTicksToImpact);
+				return this.origin + b + Vector3.up * this.def.Altitude;
+			}
+		}
+		public virtual Quaternion ExactRotation
+		{
+			get
+			{
+				return Quaternion.LookRotation(this.destination - this.origin);
+			}
+		}
+		public override Vector3 DrawPos
+		{
+			get
+			{
+				return this.ExactPosition;
+			}
+		}
+		/*
+		 * Things to add:
+		 * 
+		 * condition factored into shot variation
+		 * optics improving ranged finding
+		 * ++ Added, needs improvements
+		 * increase chance of hitting a downed pawn if the pawn was downed before the shot was fired
+		 * ++ Basically done
+		 */
+		
+		public void Launch(Thing launcher, TargetInfo targ, Thing equipment = null)
+		{
+			this.Launch(launcher, base.Position.ToVector3Shifted(), targ, null);
+		}
+		public void Launch(Thing launcher, Vector3 origin, TargetInfo targ, Thing equipment = null)
+		{
+			this.launcher = launcher;
+			this.origin = origin;
+			if (equipment != null)
+			{
+				this.equipmentDef = equipment.def;
+			}
+			else
+			{
+				this.equipmentDef = null;
+			}
+			if (targ.Thing != null)
+			{
+				this.assignedTarget = targ.Thing;
+				Pawn pawn = this.assignedTarget as Pawn;
+				if (pawn != null)
+				{
+					this.targetDownedOnSpawn = pawn.Downed;
+				}
+			}
+			if (this.destination == null)
+				this.destination = targ.Cell.ToVector3Shifted() + new Vector3(Rand.Range(-0.3f, 0.3f), 0f, Rand.Range(-0.3f, 0.3f));
+			
+			this.ticksToImpact = this.StartingTicksToImpact;
+			if (!this.def.projectile.soundAmbient.NullOrUndefined())
+			{
+				SoundInfo info = SoundInfo.InWorld(this, MaintenanceType.PerTick);
+				this.ambientSustainer = this.def.projectile.soundAmbient.TrySpawnSustainer(info);
+			}
+		}
+		public void Launch(Thing launcher, Vector3 origin, TargetInfo targ, Vector3 target, Thing equipment = null)
+		{
+			this.destination = target;
+			Launch(launcher, origin, targ, equipment);
+		}
+		
+		// CUSTOM CHECKFORFREEINTERCEPTBETWEEN
+>>>>>>> origin/master
         private bool CheckForFreeInterceptBetween(Vector3 lastExactPos, Vector3 newExactPos)
         {
             IntVec3 lastPos = lastExactPos.ToIntVec3();
@@ -267,10 +396,23 @@ namespace Combat_Realism
             }
             return false;
         }
+<<<<<<< HEAD
 
         /// <summary>
         /// Takes into account the target being downed and the projectile having been fired while the target was downed, and the target's bodySize
         /// </summary>
+=======
+        
+		public override void Draw()
+		{
+			Graphics.DrawMesh(MeshPool.plane10, this.DrawPos, this.ExactRotation, this.def.DrawMatSingle, 0);
+			base.Comps_PostDraw();
+		}
+        
+		/// <summary>
+		/// Takes into account the target being downed and the projectile having been fired while the target was downed, and the target's bodySize
+		/// </summary>
+>>>>>>> origin/master
         private bool ImpactThroughBodySize(Thing thing, float factor = 1)
         {
             Pawn pawn = thing as Pawn;
@@ -449,5 +591,134 @@ namespace Combat_Realism
             base.Position = this.DestinationCell;
             this.ImpactSomething();
         }
+<<<<<<< HEAD
     }
+=======
+        
+		protected virtual void Impact(Thing hitThing)
+		{
+			this.Destroy(DestroyMode.Vanish);
+		}
+        
+		private void ImpactSomething()
+		{
+				//Not modified, just mortar code
+			if (this.def.projectile.flyOverhead)
+			{
+				RoofDef roofDef = Find.RoofGrid.RoofAt(base.Position);
+				if (roofDef != null && roofDef.isThickRoof)
+				{
+					this.def.projectile.soundHitThickRoof.PlayOneShot(base.Position);
+					this.Destroy(DestroyMode.Vanish);
+					return;
+				}
+			}
+				//Modified
+			if (this.assignedTarget != null && this.assignedTarget.Position == this.Position)	//it was aimed at something and that something is still there
+			{
+				this.ImpactThroughBodySize(this.assignedTarget);
+				return;
+			}
+			else
+			{
+				Thing thing = Find.ThingGrid.ThingAt(base.Position, ThingCategory.Pawn);
+				if (thing != null)
+				{
+					if (this.assignedTarget != null)
+					{
+						this.ImpactThroughBodySizeCheckWithTarget(thing);
+						return;
+					}
+					this.Impact(thing);
+					return;
+				}
+				List<Thing> list = Find.ThingGrid.ThingsListAt(base.Position);
+				for (int i = 0; i < list.Count; i++)
+				{
+					Thing thing2 = list[i];
+					if (thing2.def.fillPercent > 0f || thing2.def.passability != Traversability.Standable)
+					{
+						this.Impact(thing2);
+						return;
+					}
+				}
+				this.Impact(null);
+				return;
+			}
+		}
+		
+		public void ForceInstantImpact()
+		{
+			if (!this.DestinationCell.InBounds())
+			{
+				this.Destroy(DestroyMode.Vanish);
+				return;
+			}
+			this.ticksToImpact = 0;
+			base.Position = this.DestinationCell;
+			this.ImpactSomething();
+		}
+		
+		public override void Tick()
+		{
+			base.Tick();
+			
+			if (this.landed)
+			{
+				return;
+			}
+			Vector3 exactPosition = this.ExactPosition;
+			this.ticksToImpact--;
+			if (!this.ExactPosition.InBounds())
+			{
+				this.ticksToImpact++;
+				base.Position = this.ExactPosition.ToIntVec3();
+				this.Destroy(DestroyMode.Vanish);
+				return;
+			}
+			Vector3 exactPosition2 = this.ExactPosition;
+			if (!this.def.projectile.flyOverhead && this.canFreeIntercept && this.CheckForFreeInterceptBetween(exactPosition, exactPosition2))
+			{
+				return;
+			}
+			base.Position = this.ExactPosition.ToIntVec3();
+			if ((float)this.ticksToImpact == 60f && Find.TickManager.CurTimeSpeed == TimeSpeed.Normal && this.def.projectile.soundImpactAnticipate != null)
+			{
+				this.def.projectile.soundImpactAnticipate.PlayOneShot(this);
+			}
+			if (this.ticksToImpact <= 0)
+			{
+				if (this.DestinationCell.InBounds())
+				{
+					base.Position = this.DestinationCell;
+				}
+				this.ImpactSomething();
+				return;
+			}
+			if (this.ambientSustainer != null)
+			{
+				this.ambientSustainer.Maintain();
+			}
+		}
+		
+		public override void ExposeData()
+		{
+			base.ExposeData();
+			if (Scribe.mode == LoadSaveMode.Saving && this.launcher != null && this.launcher.Destroyed)
+			{
+				this.launcher = null;
+			}
+			Scribe_Values.LookValue<Vector3>(ref this.origin, "origin", default(Vector3), false);
+			Scribe_Values.LookValue<Vector3>(ref this.destination, "destination", default(Vector3), false);
+			Scribe_References.LookReference<Thing>(ref this.assignedTarget, "assignedTarget");
+			Scribe_Values.LookValue<bool>(ref this.canFreeIntercept, "canFreeIntercept", false, false);
+			Scribe_Defs.LookDef<ThingDef>(ref this.equipmentDef, "equipmentDef");
+			Scribe_References.LookReference<Thing>(ref this.launcher, "launcher");
+			Scribe_References.LookReference<Thing>(ref this.assignedMissTargetInt, "assignedMissTarget");
+			Scribe_Values.LookValue<bool>(ref this.landed, "landed", false, false);
+			Scribe_Values.LookValue<int>(ref this.ticksToImpact, "ticksToImpact", 0, false);
+			Scribe_Values.LookValue<bool>(ref this.targetDownedOnSpawn, "targetDownedOnSpawn", false, false);
+		}
+	}
+>>>>>>> origin/master
 }
