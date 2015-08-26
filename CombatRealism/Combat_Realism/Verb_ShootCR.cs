@@ -83,11 +83,9 @@ namespace Combat_Realism
             if (this.verbProps.burstShotCount == this.burstShotsLeft)
             {
                 float actualRange = Vector3.Distance(targetLoc, sourceLoc);
-                float estimationDeviation = (cpCustom.scope ? 0.5f : 1f) * (this.CasterIsPawn ? (1 - this.shootingAccuracy) * actualRange : 0.02f * actualRange);
+                float estimationDeviation = (this.cpCustomGet.scope ? 0.5f : 1f) * ((1 - this.shootingAccuracy) * actualRange);
                 this.estimatedTargetDistance = Mathf.Clamp(Rand.Gaussian(actualRange, estimationDeviation / 3), actualRange - estimationDeviation, actualRange + estimationDeviation);
             }
-
-            targetLoc = sourceLoc + shotVec.normalized * this.estimatedTargetDistance;
             
             /*
             float estimationDeviation = (this.cpCustomGet.scope ? 0.5f : 1f) * (float)(Math.Pow(this.actualRange, 2) / (50 * 100)) * (float)Math.Pow((double)this.shootingAccuracy, this.accuracyExponent);
