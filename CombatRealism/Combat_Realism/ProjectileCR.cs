@@ -222,15 +222,20 @@ namespace Combat_Realism
                     }
                     if (thing.def.category == ThingCategory.Pawn)
                     {
+                    	float collateralChance = 0.45f;
                         if (this.assignedTarget != null)
                         {
                             Pawn pawnTarg = this.assignedTarget as Pawn;
                             if (pawnTarg != null)
                             {
-                                return ImpactThroughBodySizeCheckWithTarget(thing, 0.45f);	//Added a factor for collaterals, hardcoded
+                                return ImpactThroughBodySizeCheckWithTarget(thing, collateralChance);	//Added a factor for collaterals, hardcoded
                             }
                         }
-
+                        else
+                        {
+                        	return ImpactThroughBodySize(thing, collateralChance);
+                        }
+                        
                         /*Pawn pawn = (Pawn)thing;
                         float collateralChance = 0.45f;
                         if (pawn.GetPosture() != PawnPosture.Standing)
