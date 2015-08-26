@@ -8,8 +8,7 @@ namespace Combat_Realism
 	public class Verb_ShootCR : Verse.Verb_Shoot
 	{
         private float estimatedTargetDistance;  //Stores estimates target distance for each burst, so each burst shot uses the same
-		private const float accuracyExponent = -2f;
-        
+		
 		private CompPropertiesCustom cpCustom = null;
 		private CompPropertiesCustom cpCustomGet
 		{
@@ -53,6 +52,8 @@ namespace Combat_Realism
             sourceLoc.Scale(new Vector3(1, 0, 1));
             
             Vector3 shotVec = targetLoc - sourceLoc;    //Don't reassign this or silly things will happen
+            
+            float recoilAmplitude = 0.5f;
             
             Log.Message("targetLoc after initialize: " + targetLoc.ToString());
             
@@ -103,7 +104,7 @@ namespace Combat_Realism
 			
             Log.Message("targetLoc after range: " + targetLoc.ToString());
 			
-            targetLoc += shotVec.normalized * (recoil.y + cpCustomGet.recoilAmplitude * Rand.Range(-Math.Abs(recoil.y), Math.Abs(recoil.y)));
+            targetLoc += shotVec.normalized * (recoil.y + recoilAmplitude * Rand.Range(-Math.Abs(recoil.y), Math.Abs(recoil.y)));
             
             Log.Message("targetLoc after recoil: " + targetLoc.ToString());
             
@@ -144,7 +145,7 @@ namespace Combat_Realism
 	        //recoilXAmount = 1 (to the right)
 	        //shooterVariation = 
 	        
-	        combinedSkew += (recoil.x + cpCustomGet.recoilAmplitude * Rand.Range(-Math.Abs(recoil.x), Math.Abs(recoil.x))) + (float)Math.Sin((Find.TickManager.TicksAbs / 60) + rangeVariation) * (float)(1 - Math.Sqrt(1.2 - shootingAccuracy));
+	        combinedSkew += (recoil.x + recoilAmplitude * Rand.Range(-Math.Abs(recoil.x), Math.Abs(recoil.x))) + (float)Math.Sin((Find.TickManager.TicksAbs / 60) + rangeVariation) * (float)(1 - Math.Sqrt(1.2 - shootingAccuracy));
 	        
             Log.Message("recoil and skill Skew: " + combinedSkew.ToString());
             
