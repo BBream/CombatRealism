@@ -22,5 +22,13 @@ namespace Combat_Realism
 		public CompPropertiesCustom(Type compClass) : base(compClass)
 		{
 		}
+		
+		public float recoilXOffset
+		{
+			get
+			{
+				return this.recoilOffset != new Vector2(0, 0) ? this.recoilOffset.x : this.recoil;
+			}
+		}
 	}
 }

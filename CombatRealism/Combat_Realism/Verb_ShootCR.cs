@@ -7,84 +7,65 @@ namespace Combat_Realism
 {
 	public class Verb_ShootCR : Verse.Verb_Shoot
 	{
+
+        private float estimatedTargetDistance;  //Stores estimates target distance for each burst, so each burst shot uses the same
+		private const float accuracyExponent = -2f;
+        
+		private CompPropertiesCustom cpCustom = null;
+		private CompPropertiesCustom cpCustomGet
+		{
+			get
+			{
+				if (this.cpCustom == null)
+				{
+		            if (this.ownerEquipment != null && this.ownerEquipment.def.HasComp(typeof(CompAim)))
+		            {
+		                this.cpCustom = (CompPropertiesCustom)this.ownerEquipment.def.GetCompProperties(typeof(CompAim));
+		            }
+				}
+				return this.cpCustom;
+			}
+		}
+		
+		private float shootingAccuracy
+		{
+			get
+			{
+				Pawn pawn = this.caster as Pawn;
+				if (pawn != null)
+				{
+					return pawn.GetStatValue(StatDefOf.ShootingAccuracy, false);
+				}
+				return 0.98f;
+			}
+		}
+		
+		
         /// <summary>
         /// Shifts the original target position in accordance with target leading, range estimation and weather/lighting effects
         /// </summary>
         private Vector3 ShiftTarget()
         {
+        		// ----------------------------------- STEP 0: Actual location
+        	
             Pawn targetPawn = this.currentTarget.Thing as Pawn;
             Pawn sourcePawn = this.caster as Pawn;
             Vector3 targetLoc = targetPawn != null ? targetPawn.DrawPos : this.currentTarget.Cell.ToVector3();
             Vector3 sourceLoc = sourcePawn != null ? sourcePawn.DrawPos : this.caster.Position.ToVector3();
             targetLoc.Scale(new Vector3(1, 0, 1));
             sourceLoc.Scale(new Vector3(1, 0, 1));
-
+            
             Vector3 shotVec = targetLoc - sourceLoc;    //Don't reassign this or silly things will happen
-
+			
+            float shootingAccuracy = sourcePawn.GetStatValue(StatDefOf.ShootingAccuracy, false);
+            
             Log.Message("targetLoc after initialize: " + targetLoc.ToString());
 
-            float randomSkew = 0f;
-
             //Initialize cpCustom here so it can be called later on
-            CompPropertiesCustom cpCustom = null;
-            if (this.ownerEquipment.def.HasComp(typeof(CompAim)))
-            {
-                cpCustom = (CompPropertiesCustom)this.ownerEquipment.def.GetCompProperties(typeof(CompAim));
-            }
-
-            //Estimate range
-            float actualRange = Vector3.Distance(targetLoc, sourceLoc);
-            float estimationDeviation = (cpCustom.scope ? 0.5f : 1f) * (float)(Math.Pow(actualRange, 2) / (50 * 100)) * (float)Math.Pow((double)this.caster.GetStatValue(StatDefOf.ShootingAccuracy), -2);
-            float targetDistance = Mathf.Clamp(Rand.Gaussian(actualRange, estimationDeviation), actualRange - (3 * estimationDeviation), actualRange + (3 * estimationDeviation));
-
-            targetLoc = sourceLoc + shotVec.normalized * targetDistance;
-
-            Log.Message("targetLoc after range: " + targetLoc.ToString());
-
-            //Get shotvariation, apply recoil
-            if (cpCustom != null)
-            {
-            	randomSkew += Rand.Range(-cpCustom.moaValue, cpCustom.moaValue);
-
-                //Recoil
-                float recoilAmount = this.GetRecoilAmount();
-                randomSkew += Rand.Range(-recoilAmount / 4, recoilAmount / 4);
-                targetLoc += shotVec.normalized * Rand.Range(-recoilAmount / 2, recoilAmount);
-            }
             
-            //Get shootervariation
-	        	int prevSeed = Rand.Seed;
-		        	Rand.Seed = this.caster.thingIDNumber;
-		        	float rangeVariation = Rand.Range(0, 2);
-	        	Rand.Seed = prevSeed;
-	        randomSkew += (float)Math.Sin((Find.TickManager.TicksAbs / 60) + rangeVariation) * (float)Math.Log(Math.Pow(this.caster.GetStatValue(StatDefOf.ShootingAccuracy),-3), 8);
             
-            //Lead a moving target
-            if (targetPawn != null && targetPawn.pather.Moving)
-            {
-                float timeToTarget = targetDistance / this.verbProps.projectileDef.projectile.speed;
-                float leadDistance = targetPawn.GetStatValue(StatDefOf.MoveSpeed, false) * timeToTarget;
-                Vector3 moveVec = targetPawn.pather.nextCell.ToVector3() - targetPawn.DrawPos;
-
-                float leadVariation = 0;
-                if (this.CasterIsPawn)
-                {
-                    if (cpCustom != null)
-                    {
-                        leadVariation = cpCustom.scope ? (1 - this.CasterPawn.GetStatValue(StatDefOf.ShootingAccuracy, false)) / 4 : 1 - this.CasterPawn.GetStatValue(StatDefOf.ShootingAccuracy, false);
-                    }
-                }
-                //targetLoc += moveVec * Rand.Gaussian(leadDistance, leadDistance * leadVariation);		GAUSSIAN removed for now
-                targetLoc += moveVec * (leadDistance + Rand.Range(-leadVariation, leadVariation));
-            }
-
-            Log.Message("randomSkew: " + randomSkew.ToString());
-
-            //Skewing		-		Applied after the leading calculations to not screw them up
-            targetLoc = sourceLoc + (Quaternion.AngleAxis(randomSkew, Vector3.up) * (targetLoc - sourceLoc));	//THIS ONE REQUIRES UPDATED SHOTVECTOR
-
-            Log.Message("targetLoc after skewing: " + targetLoc.ToString());
-
+            	// ----------------------------------- STEP 1: Estimated location
+            
             //Shift for weather/lighting/recoil
             //float shiftDistance = this.GetRecoilAmount();
             //Log.Message("shiftDistance: " + shiftDistance.ToString());
@@ -100,6 +81,85 @@ namespace Combat_Realism
             //targetLoc += new Vector3(Rand.Range(-shiftDistance, shiftDistance), 0, Rand.Range(-shiftDistance, shiftDistance));
 
             //Log.Message("targetLoc after shifting: " + targetLoc.ToString());
+			
+            	// ----------------------------------- STEP 2: Estimated shot to hit location
+            
+            //Estimate range
+            
+            //Estimate range on first shot of burst
+            if (this.verbProps.burstShotCount == this.burstShotsLeft)
+            {
+                float actualRange = Vector3.Distance(targetLoc, sourceLoc);
+                float estimationDeviation = (cpCustom.scope ? 0.5f : 1f) * (this.CasterIsPawn ? (1 - this.shootingAccuracy) * actualRange : 0.02f * actualRange);
+                this.estimatedTargetDistance = Mathf.Clamp(Rand.Gaussian(actualRange, estimationDeviation / 3), actualRange - estimationDeviation, actualRange + estimationDeviation);
+            }
+            
+            /*
+            float estimationDeviation = (this.cpCustomGet.scope ? 0.5f : 1f) * (float)(Math.Pow(this.actualRange, 2) / (50 * 100)) * (float)Math.Pow((double)this.shootingAccuracy, this.accuracyExponent);
+            this.rangeEstimate = Mathf.Clamp(Rand.Gaussian(this.actualRange, estimationDeviation), this.actualRange - (3 * estimationDeviation), this.actualRange + (3 * estimationDeviation));
+            */
+            
+            targetLoc = sourceLoc + shotVec.normalized * this.estimatedTargetDistance;
+			
+            Log.Message("targetLoc after range: " + targetLoc.ToString());
+			
+            //Lead a moving target
+            if (targetPawn != null && targetPawn.pather.Moving)
+            {
+                float timeToTarget = this.estimatedTargetDistance / this.verbProps.projectileDef.projectile.speed;
+                float leadDistance = targetPawn.GetStatValue(StatDefOf.MoveSpeed, false) * timeToTarget;
+                Vector3 moveVec = targetPawn.pather.nextCell.ToVector3() - targetPawn.DrawPos;
+				
+                float leadVariation = 0;
+                if (this.CasterIsPawn)
+                {
+                    if (this.cpCustomGet != null)
+                    {
+                        leadVariation = this.cpCustomGet.scope ? (1 - shootingAccuracy) / 4 : 1 - shootingAccuracy;
+                    }
+                }
+                //targetLoc += moveVec * Rand.Gaussian(leadDistance, leadDistance * leadVariation);		GAUSSIAN removed for now
+                targetLoc += moveVec * (leadDistance + Rand.Range(-leadVariation, leadVariation));
+            }
+            
+            Log.Message("targetLoc after lead: " + targetLoc.ToString());
+			
+            	// ----------------------------------- STEP 3: Recoil, start of skewing
+           	
+            float combinedSkew = 0;
+            float recoilXAmount = 0;
+            
+            if (this.cpCustomGet != null)
+            {
+            	recoilXAmount = this.GetRecoilAmount();
+	        	recoilXAmount *= (float)(1 - 0.015 * sourcePawn.skills.GetSkill(SkillDefOf.Shooting).level);	//very placeholder
+            	//recoilSkew = Rand.Range(-recoilAmount / 4, recoilAmount / 4);
+                //targetLoc += shotVec.normalized * Rand.Range(-recoilAmount / 2, recoilAmount);
+            }
+            
+            	// ----------------------------------- STEP 4: Skill checks
+            	
+            //Get shootervariation
+	        	int prevSeed = Rand.Seed;
+		        	Rand.Seed = this.caster.thingIDNumber;
+		        	float rangeVariation = Rand.Range(0, 2);
+	        	Rand.Seed = prevSeed;
+	        //float randomSkillSkew = (float)Math.Sin((Find.TickManager.TicksAbs / 60) + rangeVariation) * (float)Math.Log(Math.Pow(shootingAccuracy,-3), 8);
+	        combinedSkew += (1 + recoilXAmount + 0.2f * Rand.Range(-recoilXAmount, recoilXAmount)) * (float)Math.Sin((Find.TickManager.TicksAbs / 60) + rangeVariation) * (float)(1 - Math.Sqrt(1.2 - shootingAccuracy));
+	        
+            Log.Message("recoil and skill Skew: " + combinedSkew.ToString());
+            
+            	// ----------------------------------- STEP 5: Mechanical variation
+            	
+            //Get shotvariation
+            combinedSkew += this.cpCustomGet != null ? Rand.Range(-this.cpCustomGet.moaValue, this.cpCustomGet.moaValue) : 0;
+			
+            Log.Message("combined Skew: " + combinedSkew.ToString());
+
+            //Skewing		-		Applied after the leading calculations to not screw them up
+            targetLoc = sourceLoc + (Quaternion.AngleAxis(combinedSkew, Vector3.up) * (targetLoc - sourceLoc));	//THIS ONE REQUIRES UPDATED SHOTVECTOR
+
+            Log.Message("targetLoc after skewing: " + targetLoc.ToString());
             
             return targetLoc;
         }
@@ -110,19 +170,18 @@ namespace Combat_Realism
         private float GetRecoilAmount()
         {
             float recoilAmount = 0;
-            CompPropertiesCustom cpCustom = (CompPropertiesCustom)this.ownerEquipment.def.GetCompProperties(typeof(CompAim));
-            
         	int currentBurst = (this.verbProps.burstShotCount - this.burstShotsLeft) <= 10 ? (this.verbProps.burstShotCount - this.burstShotsLeft) - 1 : 10;
-            if (cpCustom.recoil > 0)
+            if (this.cpCustomGet.recoilXOffset != 0)
             {
-                if (this.CasterIsPawn)
+            	recoilAmount += this.cpCustomGet.recoilXOffset * (2 * (float)Math.Sqrt(0.1 * currentBurst)) * (this.CasterIsPawn ? 1 : 0.5f);
+                /*if (this.CasterIsPawn)
                 {
-                    recoilAmount += cpCustom.recoil * (float)Math.Pow(currentBurst + 3, 1 - this.CasterPawn.GetStatValue(StatDefOf.ShootingAccuracy));
+                    recoilAmount += offset * (float)Math.Pow(currentBurst + 3, 1 - this.CasterPawn.GetStatValue(StatDefOf.ShootingAccuracy));
                 }
                 else
                 {
-                    recoilAmount += cpCustom.recoil * (float)Math.Pow(currentBurst + 3, 0.02f);
-                }
+                    recoilAmount += offset * (float)Math.Pow(currentBurst + 3, 0.02f);
+                }*/
             }
         	return recoilAmount;
         }
@@ -133,23 +192,6 @@ namespace Combat_Realism
         /// <returns>True for successful shot</returns>
         protected bool TryCastShot(float forcedMissRadius, float rangeFactor)
         {
-            /*
-             * Things to add:
-             * 
-             * shooter inaccuracy,
-             * 		++ Alistaire did this
-             * shooter ability to estimate range,
-             * 		++ Alistaire/NoImageAvailable did this
-             * shooter ability to lead,
-             * 		++ NoImageAvailable did this
-             * additional inaccuracies from weather and lighting
-             * 		++ NoImageAvailable did this
-             * recoil
-             * 		-- NoImageAvailable started this
-             * shooter ability to handle recoil
-             * 		-- NoImageAvailable started this
-             */
-
             ShootLine shootLine;
             if (!base.TryFindShootLineFromTo(this.caster.Position, this.currentTarget, out shootLine))
             {
