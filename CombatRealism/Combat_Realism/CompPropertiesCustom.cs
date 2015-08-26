@@ -13,6 +13,7 @@ namespace Combat_Realism
 	{
 		public float moaValue = 0;
 		public float recoil = 0;
+		public Vector2 recoilOffset = new Vector2(0, 0);
 		public bool scope = false;
 		
 		public CompPropertiesCustom() : base()
