@@ -7,6 +7,8 @@ namespace Combat_Realism
 {
 	public class Verb_ShootCR : Verse.Verb_Shoot
 	{
+        private float estimatedTargetDistance;  //Stores estimates target distance for each burst, so each burst shot uses the same
+
         /// <summary>
         /// Shifts the original target position in accordance with target leading, range estimation and weather/lighting effects
         /// </summary>
@@ -30,12 +32,15 @@ namespace Combat_Realism
                 cpCustom = (CompPropertiesCustom)this.ownerEquipment.def.GetCompProperties(typeof(CompAim));
             }
 
-            //Estimate range
-            float actualRange = Vector3.Distance(targetLoc, sourceLoc);
-            float estimationDeviation = (cpCustom.scope ? 0.5f : 1f) * (this.CasterIsPawn ? (1 - this.caster.GetStatValue(StatDefOf.ShootingAccuracy, false)) * actualRange : 0.02f * actualRange);
-            float targetDistance = Mathf.Clamp(Rand.Gaussian(actualRange, estimationDeviation), actualRange - estimationDeviation, actualRange + estimationDeviation);
+            //Estimate range on first shot of burst
+            if (this.verbProps.burstShotCount == this.burstShotsLeft)
+            {
+                float actualRange = Vector3.Distance(targetLoc, sourceLoc);
+                float estimationDeviation = (cpCustom.scope ? 0.5f : 1f) * (this.CasterIsPawn ? (1 - this.caster.GetStatValue(StatDefOf.ShootingAccuracy, false)) * actualRange : 0.02f * actualRange);
+                this.estimatedTargetDistance = Mathf.Clamp(Rand.Gaussian(actualRange, estimationDeviation / 3), actualRange - estimationDeviation, actualRange + estimationDeviation);
+            }
 
-            targetLoc = sourceLoc + shotVec.normalized * targetDistance;
+            targetLoc = sourceLoc + shotVec.normalized * this.estimatedTargetDistance;
 
             //Get shotvariation, apply recoil
             if (cpCustom != null)
@@ -58,7 +63,7 @@ namespace Combat_Realism
             //Lead a moving target
             if (targetPawn != null && targetPawn.pather.Moving)
             {
-                float timeToTarget = targetDistance / this.verbProps.projectileDef.projectile.speed;
+                float timeToTarget = this.estimatedTargetDistance / this.verbProps.projectileDef.projectile.speed;
                 float leadDistance = targetPawn.GetStatValue(StatDefOf.MoveSpeed, false) * timeToTarget;
                 Vector3 moveVec = targetPawn.pather.nextCell.ToVector3() - targetPawn.DrawPos;
 
@@ -104,16 +109,16 @@ namespace Combat_Realism
             float recoilAmount = 0;
             CompPropertiesCustom cpCustom = (CompPropertiesCustom)this.ownerEquipment.def.GetCompProperties(typeof(CompAim));
             
-        	int currentBurst = (this.verbProps.burstShotCount - this.burstShotsLeft) <= 10 ? (this.verbProps.burstShotCount - this.burstShotsLeft) - 1 : 10;
+        	int currentBurst = (this.verbProps.burstShotCount - this.burstShotsLeft) <= 11 ? (this.verbProps.burstShotCount - this.burstShotsLeft) : 11;
             if (cpCustom.recoil > 0)
             {
                 if (this.CasterIsPawn)
                 {
-                    recoilAmount += cpCustom.recoil * (float)Math.Pow(currentBurst + 3, 1 - this.CasterPawn.GetStatValue(StatDefOf.ShootingAccuracy));
+                    recoilAmount += cpCustom.recoil * (float)Math.Pow(currentBurst + 2, 1 - this.CasterPawn.GetStatValue(StatDefOf.ShootingAccuracy));
                 }
                 else
                 {
-                    recoilAmount += cpCustom.recoil * (float)Math.Pow(currentBurst + 3, 0.02f);
+                    recoilAmount += cpCustom.recoil * (float)Math.Pow(currentBurst + 2, 0.02f);
                 }
             }
         	return recoilAmount;
