@@ -14,10 +14,12 @@ namespace Combat_Realism
         {
             Pawn targetPawn = this.currentTarget.Thing as Pawn;
             Pawn sourcePawn = this.caster as Pawn;
-            Vector3 targetLoc = targetPawn != null ? targetPawn.DrawPos : this.currentTarget.Thing.Position.ToVector3();
+            Vector3 targetLoc = targetPawn != null ? targetPawn.DrawPos : this.currentTarget.Cell.ToVector3();
             Vector3 sourceLoc = sourcePawn != null ? sourcePawn.DrawPos : this.caster.Position.ToVector3();
             targetLoc.Scale(new Vector3(1, 0, 1));
             sourceLoc.Scale(new Vector3(1, 0, 1));
+
+            Vector3 shotVec = targetLoc - sourceLoc;    //Don't reassign this or silly things will happen
 
             Log.Message("targetLoc after initialize: " + targetLoc.ToString());
 
@@ -35,14 +37,19 @@ namespace Combat_Realism
             float estimationDeviation = (cpCustom.scope ? 0.5f : 1f) * (float)(Math.Pow(actualRange, 2) / (50 * 100)) * (float)Math.Pow((double)this.caster.GetStatValue(StatDefOf.ShootingAccuracy), -2);
             float targetDistance = Mathf.Clamp(Rand.Gaussian(actualRange, estimationDeviation), actualRange - (3 * estimationDeviation), actualRange + (3 * estimationDeviation));
 
-            targetLoc = sourceLoc + (targetLoc - sourceLoc).normalized * targetDistance;
+            targetLoc = sourceLoc + shotVec.normalized * targetDistance;
 
-            Log.Message("targetLoc after estimate range: " + targetLoc.ToString());
+            Log.Message("targetLoc after range: " + targetLoc.ToString());
 
-            //Get shotvariation
+            //Get shotvariation, apply recoil
             if (cpCustom != null)
             {
             	randomSkew += Rand.Range(-cpCustom.moaValue, cpCustom.moaValue);
+
+                //Recoil
+                float recoilAmount = this.GetRecoilAmount();
+                randomSkew += Rand.Range(-recoilAmount / 4, recoilAmount / 4);
+                targetLoc += shotVec.normalized * Rand.Range(-recoilAmount / 2, recoilAmount);
             }
             
             //Get shootervariation
@@ -69,29 +76,30 @@ namespace Combat_Realism
                 }
                 //targetLoc += moveVec * Rand.Gaussian(leadDistance, leadDistance * leadVariation);		GAUSSIAN removed for now
                 targetLoc += moveVec * (leadDistance + Rand.Range(-leadVariation, leadVariation));
-
-                Log.Message("targetLoc after lead: " + targetLoc.ToString());
             }
-            
+
+            Log.Message("randomSkew: " + randomSkew.ToString());
+
             //Skewing		-		Applied after the leading calculations to not screw them up
-            targetLoc = sourceLoc + (Quaternion.AngleAxis(randomSkew, Vector3.up) * (targetLoc - sourceLoc));
+            //targetLoc = sourceLoc + (Quaternion.AngleAxis(randomSkew, Vector3.up) * shotVec);
 
             Log.Message("targetLoc after skewing: " + targetLoc.ToString());
 
             //Shift for weather/lighting/recoil
-            float shiftDistance = this.GetRecoilAmount();
-            if (!this.caster.Position.Roofed() || !targetLoc.ToIntVec3().Roofed())  //Change to more accurate algorithm?
-            {
-                shiftDistance += targetDistance * 1 - Find.WeatherManager.CurWeatherAccuracyMultiplier;
-            }
-            if (Find.GlowGrid.PsychGlowAt(targetLoc.ToIntVec3()) == PsychGlow.Dark)
-            {
-                shiftDistance += targetDistance * 0.2f;
-            }
+            //float shiftDistance = this.GetRecoilAmount();
+            //Log.Message("shiftDistance: " + shiftDistance.ToString());
+            //if (!this.caster.Position.Roofed() || !targetLoc.ToIntVec3().Roofed())  //Change to more accurate algorithm?
+            //{
+            //    shiftDistance += targetDistance * 1 - Find.WeatherManager.CurWeatherAccuracyMultiplier;
+            //}
+            //if (Find.GlowGrid.PsychGlowAt(targetLoc.ToIntVec3()) == PsychGlow.Dark)
+            //{
+            //    shiftDistance += targetDistance * 0.2f;
+            //}
             //Last modification of the loc, a random rectangle
-            targetLoc += new Vector3(Rand.Range(-shiftDistance, shiftDistance), 0, Rand.Range(-shiftDistance, shiftDistance));
+            //targetLoc += new Vector3(Rand.Range(-shiftDistance, shiftDistance), 0, Rand.Range(-shiftDistance, shiftDistance));
 
-            Log.Message("targetLoc after shifting: " + targetLoc.ToString());
+            //Log.Message("targetLoc after shifting: " + targetLoc.ToString());
             
             return targetLoc;
         }
@@ -109,11 +117,11 @@ namespace Combat_Realism
             {
                 if (this.CasterIsPawn)
                 {
-                    recoilAmount += cpCustom.recoil * (1 - this.CasterPawn.GetStatValue(StatDefOf.ShootingAccuracy)) * currentBurst;
+                    recoilAmount += cpCustom.recoil * (float)Math.Pow(currentBurst + 3, 1 - this.CasterPawn.GetStatValue(StatDefOf.ShootingAccuracy));
                 }
                 else
                 {
-                    recoilAmount += cpCustom.recoil * 0.02f * currentBurst;
+                    recoilAmount += cpCustom.recoil * (float)Math.Pow(currentBurst + 3, 0.02f);
                 }
             }
         	return recoilAmount;
