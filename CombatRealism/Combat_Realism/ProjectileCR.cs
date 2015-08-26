@@ -19,11 +19,6 @@ namespace Combat_Realism
 		/*
 		 * Things to add:
 		 * 
-		 * minute of angle / shot variation
-		 * -- if (gun has shot variation)
-		 * ---- math.rand(-variation, variation)
-		 * -- else
-		 * ---- calculate variation
 		 * condition factored into shot variation
 		 * optics improving ranged finding
 		 * ++ Added, needs improvements
@@ -296,6 +291,49 @@ namespace Combat_Realism
 			}
 		}
 		
+		public override void Tick()
+		{
+				//I'm doing this cause base.Tick(); gives unwanted results - double hit detection and such
+			ThingWithComps grandparent = this as ThingWithComps;
+			grandparent.Tick();
+			
+			if (this.landed)
+			{
+				return;
+			}
+			Vector3 exactPosition = this.ExactPosition;
+			this.ticksToImpact--;
+			if (!this.ExactPosition.InBounds())
+			{
+				this.ticksToImpact++;
+				base.Position = this.ExactPosition.ToIntVec3();
+				this.Destroy(DestroyMode.Vanish);
+				return;
+			}
+			Vector3 exactPosition2 = this.ExactPosition;
+			if (!this.def.projectile.flyOverhead && this.canFreeIntercept && this.CheckForFreeInterceptBetween(exactPosition, exactPosition2))
+			{
+				return;
+			}
+			base.Position = this.ExactPosition.ToIntVec3();
+			if ((float)this.ticksToImpact == 60f && Find.TickManager.CurTimeSpeed == TimeSpeed.Normal && this.def.projectile.soundImpactAnticipate != null)
+			{
+				this.def.projectile.soundImpactAnticipate.PlayOneShot(this);
+			}
+			if (this.ticksToImpact <= 0)
+			{
+				if (this.DestinationCell.InBounds())
+				{
+					base.Position = this.DestinationCell;
+				}
+				this.ImpactSomething();
+				return;
+			}
+			if (this.ambientSustainer != null)
+			{
+				this.ambientSustainer.Maintain();
+			}
+		}
 		
 		public override void ExposeData()
 		{
