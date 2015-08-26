@@ -103,7 +103,7 @@ namespace Combat_Realism
 			
             Log.Message("targetLoc after range: " + targetLoc.ToString());
 			
-            targetLoc += shotVec.normalized * (recoil.y + 0.2f * Rand.Range(-Math.Abs(recoil.y), Math.Abs(recoil.y)));
+            targetLoc += shotVec.normalized * (recoil.y + cpCustomGet.recoilAmplitude * Rand.Range(-Math.Abs(recoil.y), Math.Abs(recoil.y)));
             
             Log.Message("targetLoc after recoil: " + targetLoc.ToString());
             
@@ -144,7 +144,7 @@ namespace Combat_Realism
 	        //recoilXAmount = 1 (to the right)
 	        //shooterVariation = 
 	        
-	        combinedSkew += (recoil.x + 0.2f * Rand.Range(-Math.Abs(recoil.x), Math.Abs(recoil.x))) + (float)Math.Sin((Find.TickManager.TicksAbs / 60) + rangeVariation) * (float)(1 - Math.Sqrt(1.2 - shootingAccuracy));
+	        combinedSkew += (recoil.x + cpCustomGet.recoilAmplitude * Rand.Range(-Math.Abs(recoil.x), Math.Abs(recoil.x))) + (float)Math.Sin((Find.TickManager.TicksAbs / 60) + rangeVariation) * (float)(1 - Math.Sqrt(1.2 - shootingAccuracy));
 	        
             Log.Message("recoil and skill Skew: " + combinedSkew.ToString());
             

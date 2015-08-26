@@ -15,6 +15,7 @@ namespace Combat_Realism
 		public float recoil = 0;
 		public Vector2 recoilOffset = new Vector2(0, 0);
 		public bool scope = false;
+		public float recoilAmplitude = 0.2f;
 		
 		public CompPropertiesCustom() : base()
 		{
