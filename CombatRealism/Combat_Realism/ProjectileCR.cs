@@ -10,12 +10,77 @@ namespace Combat_Realism
 	/// <summary>
 	/// Description of ProjectileCR.
 	/// </summary>
-	public class ProjectileCR : Projectile
+	public class ProjectileCR : ThingWithComps
 	{
-		private Sustainer ambientSustainer;		//required for the Launch sounds
-        private static List<IntVec3> checkedCells = new List<IntVec3>();
+		private const float MinFreeInterceptDistance = 4f;
+		protected Vector3 origin;
+		protected Vector3 destination;
+		protected Thing assignedTarget;
+		public bool canFreeIntercept;
+		protected ThingDef equipmentDef;
+		protected Thing launcher;
+		private Thing assignedMissTargetInt;
+		protected bool landed;
+		protected int ticksToImpact;
+		private Sustainer ambientSustainer;
+		private static List<IntVec3> checkedCells = new List<IntVec3>();
 		private bool targetDownedOnSpawn = false;
-        
+		public Thing AssignedMissTarget
+		{
+			get
+			{
+				return this.assignedMissTargetInt;
+			}
+			set
+			{
+				if (value.def.Fillage == FillCategory.Full)
+				{
+					return;
+				}
+				this.assignedMissTargetInt = value;
+			}
+		}
+		protected int StartingTicksToImpact
+		{
+			get
+			{
+				int num = Mathf.RoundToInt((this.origin - this.destination).magnitude / (this.def.projectile.speed / 100f));
+				if (num < 1)
+				{
+					num = 1;
+				}
+				return num;
+			}
+		}
+		protected IntVec3 DestinationCell
+		{
+			get
+			{
+				return new IntVec3(this.destination);
+			}
+		}
+		public virtual Vector3 ExactPosition
+		{
+			get
+			{
+				Vector3 b = (this.destination - this.origin) * (1f - (float)this.ticksToImpact / (float)this.StartingTicksToImpact);
+				return this.origin + b + Vector3.up * this.def.Altitude;
+			}
+		}
+		public virtual Quaternion ExactRotation
+		{
+			get
+			{
+				return Quaternion.LookRotation(this.destination - this.origin);
+			}
+		}
+		public override Vector3 DrawPos
+		{
+			get
+			{
+				return this.ExactPosition;
+			}
+		}
 		/*
 		 * Things to add:
 		 * 
@@ -26,11 +91,11 @@ namespace Combat_Realism
 		 * ++ Basically done
 		 */
 		
-		new public void Launch(Thing launcher, TargetInfo targ, Thing equipment = null)
+		public void Launch(Thing launcher, TargetInfo targ, Thing equipment = null)
 		{
 			this.Launch(launcher, base.Position.ToVector3Shifted(), targ, null);
 		}
-		new public void Launch(Thing launcher, Vector3 origin, TargetInfo targ, Thing equipment = null)
+		public void Launch(Thing launcher, Vector3 origin, TargetInfo targ, Thing equipment = null)
 		{
 			this.launcher = launcher;
 			this.origin = origin;
@@ -184,6 +249,12 @@ namespace Combat_Realism
             return false;
         }
         
+		public override void Draw()
+		{
+			Graphics.DrawMesh(MeshPool.plane10, this.DrawPos, this.ExactRotation, this.def.DrawMatSingle, 0);
+			base.Comps_PostDraw();
+		}
+        
 		/// <summary>
 		/// Takes into account the target being downed and the projectile having been fired while the target was downed, and the target's bodySize
 		/// </summary>
@@ -244,6 +315,11 @@ namespace Combat_Realism
         	return false;
         }
         
+		protected virtual void Impact(Thing hitThing)
+		{
+			this.Destroy(DestroyMode.Vanish);
+		}
+        
 		private void ImpactSomething()
 		{
 				//Not modified, just mortar code
@@ -291,11 +367,21 @@ namespace Combat_Realism
 			}
 		}
 		
+		public void ForceInstantImpact()
+		{
+			if (!this.DestinationCell.InBounds())
+			{
+				this.Destroy(DestroyMode.Vanish);
+				return;
+			}
+			this.ticksToImpact = 0;
+			base.Position = this.DestinationCell;
+			this.ImpactSomething();
+		}
+		
 		public override void Tick()
 		{
-				//I'm doing this cause base.Tick(); gives unwanted results - double hit detection and such
-			ThingWithComps grandparent = this as ThingWithComps;
-			grandparent.Tick();
+			base.Tick();
 			
 			if (this.landed)
 			{
@@ -338,6 +424,19 @@ namespace Combat_Realism
 		public override void ExposeData()
 		{
 			base.ExposeData();
+			if (Scribe.mode == LoadSaveMode.Saving && this.launcher != null && this.launcher.Destroyed)
+			{
+				this.launcher = null;
+			}
+			Scribe_Values.LookValue<Vector3>(ref this.origin, "origin", default(Vector3), false);
+			Scribe_Values.LookValue<Vector3>(ref this.destination, "destination", default(Vector3), false);
+			Scribe_References.LookReference<Thing>(ref this.assignedTarget, "assignedTarget");
+			Scribe_Values.LookValue<bool>(ref this.canFreeIntercept, "canFreeIntercept", false, false);
+			Scribe_Defs.LookDef<ThingDef>(ref this.equipmentDef, "equipmentDef");
+			Scribe_References.LookReference<Thing>(ref this.launcher, "launcher");
+			Scribe_References.LookReference<Thing>(ref this.assignedMissTargetInt, "assignedMissTarget");
+			Scribe_Values.LookValue<bool>(ref this.landed, "landed", false, false);
+			Scribe_Values.LookValue<int>(ref this.ticksToImpact, "ticksToImpact", 0, false);
 			Scribe_Values.LookValue<bool>(ref this.targetDownedOnSpawn, "targetDownedOnSpawn", false, false);
 		}
 	}
