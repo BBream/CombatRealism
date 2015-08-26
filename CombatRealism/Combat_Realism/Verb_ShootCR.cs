@@ -7,7 +7,6 @@ namespace Combat_Realism
 {
 	public class Verb_ShootCR : Verse.Verb_Shoot
 	{
-
         private float estimatedTargetDistance;  //Stores estimates target distance for each burst, so each burst shot uses the same
 		private const float accuracyExponent = -2f;
         
@@ -39,8 +38,6 @@ namespace Combat_Realism
 				return 0.98f;
 			}
 		}
-		
-		
         /// <summary>
         /// Shifts the original target position in accordance with target leading, range estimation and weather/lighting effects
         /// </summary>
@@ -56,11 +53,9 @@ namespace Combat_Realism
             sourceLoc.Scale(new Vector3(1, 0, 1));
             
             Vector3 shotVec = targetLoc - sourceLoc;    //Don't reassign this or silly things will happen
-			
-            float shootingAccuracy = sourcePawn.GetStatValue(StatDefOf.ShootingAccuracy, false);
             
             Log.Message("targetLoc after initialize: " + targetLoc.ToString());
-
+            
             //Initialize cpCustom here so it can be called later on
             
             
@@ -84,15 +79,15 @@ namespace Combat_Realism
 			
             	// ----------------------------------- STEP 2: Estimated shot to hit location
             
-            //Estimate range
-            
             //Estimate range on first shot of burst
             if (this.verbProps.burstShotCount == this.burstShotsLeft)
             {
                 float actualRange = Vector3.Distance(targetLoc, sourceLoc);
-                float estimationDeviation = (cpCustom.scope ? 0.5f : 1f) * (this.CasterIsPawn ? (1 - this.shootingAccuracy) * actualRange : 0.02f * actualRange);
+                float estimationDeviation = (cpCustom.scope ? 0.5f : 1f) * (this.CasterIsPawn ? (1 - this.caster.GetStatValue(StatDefOf.ShootingAccuracy, false)) * actualRange : 0.02f * actualRange);
                 this.estimatedTargetDistance = Mathf.Clamp(Rand.Gaussian(actualRange, estimationDeviation / 3), actualRange - estimationDeviation, actualRange + estimationDeviation);
             }
+
+            targetLoc = sourceLoc + shotVec.normalized * this.estimatedTargetDistance;
             
             /*
             float estimationDeviation = (this.cpCustomGet.scope ? 0.5f : 1f) * (float)(Math.Pow(this.actualRange, 2) / (50 * 100)) * (float)Math.Pow((double)this.shootingAccuracy, this.accuracyExponent);
@@ -170,7 +165,7 @@ namespace Combat_Realism
         private float GetRecoilAmount()
         {
             float recoilAmount = 0;
-        	int currentBurst = (this.verbProps.burstShotCount - this.burstShotsLeft) <= 10 ? (this.verbProps.burstShotCount - this.burstShotsLeft) - 1 : 10;
+			int currentBurst = (this.verbProps.burstShotCount - this.burstShotsLeft) <= 11 ? (this.verbProps.burstShotCount - this.burstShotsLeft) : 11;
             if (this.cpCustomGet.recoilXOffset != 0)
             {
             	recoilAmount += this.cpCustomGet.recoilXOffset * (2 * (float)Math.Sqrt(0.1 * currentBurst)) * (this.CasterIsPawn ? 1 : 0.5f);
