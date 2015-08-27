@@ -21,6 +21,7 @@ namespace Combat_Realism
         protected int ticksToImpact;
         private Sustainer ambientSustainer;
         private static List<IntVec3> checkedCells = new List<IntVec3>();
+        
         public Thing AssignedMissTarget
         {
             get
@@ -80,7 +81,17 @@ namespace Combat_Realism
 
         //New variables
         private bool targetDownedOnSpawn = false;
-
+        public float shotAngle = 0f;
+        public float shotHeight = 0f;
+        
+        private float Distance
+        {
+        	get
+        	{
+        		return (this.destination - this.origin).magnitude;
+        	}
+        }
+        
         /*
          * *** End of class variables ***
         */
@@ -105,8 +116,18 @@ namespace Combat_Realism
 
             //Here be new variables
             Scribe_Values.LookValue<bool>(ref this.targetDownedOnSpawn, "targetDownedOnSpawn", false, false);
+            Scribe_Values.LookValue<float>(ref this.shotAngle, "shotAngle", 0f, true);
+            Scribe_Values.LookValue<float>(ref this.shotAngle, "shotHeight", 0f, true);
         }
 
+        public float ProjectileHeight(float zeroheight, float distance, float angle, float velocity)
+        {
+			float gravity = 9.8f;
+			float height = (float)(zeroheight + (distance * Math.Tan(angle)) - (gravity * Math.Pow(distance, 2)) / (2 * Math.Pow(velocity * Math.Cos(angle), 2)));
+        	
+        	return height;
+        }
+        
         //Added new calculations for downed pawns, destination
         public void Launch(Thing launcher, Vector3 origin, TargetInfo targ, Thing equipment = null)
         {
@@ -210,53 +231,34 @@ namespace Combat_Realism
                 return false;
             }
             List<Thing> list = Find.ThingGrid.ThingsListAt(cell);
+            float height = (list.Count > 0) ? ProjectileHeight(this.shotHeight, this.Distance, this.shotAngle, this.def.projectile.speed) : 0;
             for (int i = 0; i < list.Count; i++)
             {
                 Thing thing = list[i];
-                if (thing != this.AssignedMissTarget)
+                if (thing != this.AssignedMissTarget)	//Is this check really necessary
                 {
-                    if (thing.def.Fillage == FillCategory.Full)
+                    if (thing.def.Fillage == FillCategory.Full)	//ignore height
                     {
                         this.Impact(thing);
                         return true;
                     }
                     if (thing.def.category == ThingCategory.Pawn)
                     {
-                    	float collateralChance = 0.45f;
-                        if (this.assignedTarget != null)
-                        {
-                            Pawn pawnTarg = this.assignedTarget as Pawn;
-                            if (pawnTarg != null)
-                            {
-                                return ImpactThroughBodySizeCheckWithTarget(thing, collateralChance);	//Added a factor for collaterals, hardcoded
-                            }
-                        }
-                        else
-                        {
-                        	return ImpactThroughBodySize(thing, collateralChance);
-                        }
+                    	return ImpactThroughBodySize(thing, height);
                     }
                     //Check for trees
-                    if (thing.def.category == ThingCategory.Plant && thing.def.altitudeLayer == AltitudeLayer.BuildingTall && Rand.Value < thing.def.fillPercent)
+                    if (thing.def.category == ThingCategory.Plant && thing.def.altitudeLayer == AltitudeLayer.BuildingTall && height < thing.def.fillPercent)
                     {
                         this.Impact(thing);
                         return true;
                     }
-                    //Check for cover
-                    if (this.ticksToImpact < this.StartingTicksToImpact / 2 && (float)Math.Pow(Vector3.Distance(Vector3.Scale(this.DrawPos, new Vector3(1, 0, 1)), this.destination) + 4, 0.5f) - 1.5 < thing.def.fillPercent)
+                    //Apparently checking for cover
+                    if (this.ticksToImpact < this.StartingTicksToImpact / 2 && height < thing.def.fillPercent)
                     {
                         this.Impact(thing);
                         Log.Message("Impacting: " + thing.ToString());
                         return true;
                     }
-                    /*
-                    //Placeholder covercheck
-                    if (this.ticksToImpact < this.StartingTicksToImpact / 2
-                        && Rand.Value < thing.def.fillPercent * 1 - this.ticksToImpact / this.StartingTicksToImpact)
-                    {
-                        this.Impact(thing);
-                        return true;
-                    }*/
 
                 }
             }
@@ -266,58 +268,17 @@ namespace Combat_Realism
         /// <summary>
         /// Takes into account the target being downed and the projectile having been fired while the target was downed, and the target's bodySize
         /// </summary>
-        private bool ImpactThroughBodySize(Thing thing, float factor = 1)
+        private bool ImpactThroughBodySize(Thing thing, float height)
         {
             Pawn pawn = thing as Pawn;
             if (pawn != null)
             {
-                if (pawn.Downed != this.targetDownedOnSpawn)
-                {
-                    double checkNr;
-                    if (pawn.BodySize >= 1.666)		//Why 1.666? that's the point at which (X - 0.5) / X = 0.7
-                    {
-                        checkNr = (pawn.BodySize - 0.5) / pawn.BodySize;
-                    }
-                    else
-                    {
-                        //This makes two lines (1.666, 0.7) -> (1.0, 0.8) -> (0.0, 1.0)
-                        checkNr = (pawn.BodySize < 1 ? 1 : 0.95) - (pawn.BodySize < 1 ? 0.2 : 0.15) * pawn.BodySize;
-                    }
-                    bool hit = Rand.Value < checkNr * factor;
-                    this.Impact(hit ? thing : null);
-                    return hit;
-                }
-                else
-                {
-                    bool hit = pawn.Downed ? Rand.Value < 0.93 * factor : true;
-                    this.Impact(hit ? thing : null);
-                    return hit;
-                }
-            }
-            if ((factor != 1 && Rand.Value < factor) || true)
-            {
-                this.Impact(thing);
-                return true;
-            }
-
-            this.Impact(null);
-            return false;
-        }
-
-        /// <summary>
-        /// Checks a new suggested target with the old target and decides whether it should go through an ImpactThroughBodySize
-        /// Can only be called when this.assignedTarget exists
-        /// </summary>
-        private bool ImpactThroughBodySizeCheckWithTarget(Thing thing, float factor = 1)
-        {
-            Pawn pawn = thing as Pawn;
-            Pawn pawnTarg = this.assignedTarget as Pawn;
-            if (pawn.def.race.body == pawnTarg.def.race.body
-                || (pawn.BodySize >= pawnTarg.BodySize
-                || (pawn.BodySize >= 0.5 * pawnTarg.BodySize && (!pawn.Downed && this.targetDownedOnSpawn)))
-                || Rand.Value < pawn.BodySize / pawnTarg.BodySize)
-            {
-                return this.ImpactThroughBodySize(thing, factor);
+            	float downedSize = (float)(pawn.BodySize > 1 ? pawn.BodySize - 0.5 : 0.5 * pawn.BodySize);
+            	if (height < (pawn.Downed ? downedSize : pawn.BodySize))
+            	{
+            		this.Impact(thing);
+            		return true;
+            	}
             }
             this.Impact(null);
             return false;
@@ -337,10 +298,11 @@ namespace Combat_Realism
                     return;
                 }
             }
+            
             //Modified
             if (this.assignedTarget != null && this.assignedTarget.Position == this.Position)	//it was aimed at something and that something is still there
             {
-                this.ImpactThroughBodySize(this.assignedTarget);
+                this.ImpactThroughBodySize(this.assignedTarget, ProjectileHeight(this.shotHeight, this.Distance, this.shotAngle, this.def.projectile.speed));
                 return;
             }
             else
@@ -348,19 +310,15 @@ namespace Combat_Realism
                 Thing thing = Find.ThingGrid.ThingAt(base.Position, ThingCategory.Pawn);
                 if (thing != null)
                 {
-                    if (this.assignedTarget != null)
-                    {
-                        this.ImpactThroughBodySizeCheckWithTarget(thing);
-                        return;
-                    }
-                    this.Impact(thing);
+                    this.ImpactThroughBodySize(thing, ProjectileHeight(this.shotHeight, this.Distance, this.shotAngle, this.def.projectile.speed));
                     return;
                 }
                 List<Thing> list = Find.ThingGrid.ThingsListAt(base.Position);
+                float height = (list.Count > 0) ? ProjectileHeight(this.shotHeight, this.Distance, this.shotAngle, this.def.projectile.speed) : 0;
                 for (int i = 0; i < list.Count; i++)
                 {
                     Thing thing2 = list[i];
-                    if (thing2.def.fillPercent > 0f || thing2.def.passability != Traversability.Standable)
+                    if (height < thing2.def.fillPercent || thing2.def.passability != Traversability.Standable)
                     {
                         this.Impact(thing2);
                         return;

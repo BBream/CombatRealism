@@ -9,6 +9,9 @@ namespace Combat_Realism
 	{
         private float estimatedTargetDistance;  //Stores estimates target distance for each burst, so each burst shot uses the same
 		private const float accuracyExponent = -2f;
+		private Vector2 recoilMagnitude = new Vector2(0.2f, 0.5f);
+		private float shotAngle;
+		private float shotHeight;
         
 		private CompPropertiesCustom cpCustom = null;
 		private CompPropertiesCustom cpCustomGet
@@ -47,6 +50,13 @@ namespace Combat_Realism
 			return angle;
 		}
 		
+		private float DistanceTraveled(float velocity, float angle, float heightDifference)
+		{
+			float gravity = 9.8f;
+			float distance = (float)((velocity * Math.Cos(angle)) / gravity) * (float)(velocity * Math.Sin(angle) + Math.Sqrt(Math.Pow(velocity * Math.Sin(angle), 2) + 2 * gravity * heightDifference));
+			return distance;
+		}
+		
         /// <summary>
         /// Shifts the original target position in accordance with target leading, range estimation and weather/lighting effects
         /// </summary>
@@ -61,8 +71,6 @@ namespace Combat_Realism
             targetLoc.Scale(new Vector3(1, 0, 1));
             sourceLoc.Scale(new Vector3(1, 0, 1));
             
-            Vector3 shotVec = targetLoc - sourceLoc;    //Don't reassign this or silly things will happen
-            
             Log.Message("targetLoc after initialize: " + targetLoc.ToString());
             
             // Calculating recoil before use
@@ -71,17 +79,17 @@ namespace Combat_Realism
             {
             	recoil = this.GetRecoilAmount();
 	        	recoil *= (float)(1 - 0.015 * sourcePawn.skills.GetSkill(SkillDefOf.Shooting).level);	//very placeholder
-            	//recoilSkew = Rand.Range(-recoilAmount / 4, recoilAmount / 4);
-                //targetLoc += shotVec.normalized * Rand.Range(-recoilAmount / 2, recoilAmount);
             }
             
             	// ----------------------------------- STEP 1: Estimated location
+            
+            Vector3 shotVec = targetLoc - sourceLoc;    //Assigned for use in Estimated Location
             
             //Shift for weather/lighting/recoil
             float shiftDistance = 0;
             if (!this.caster.Position.Roofed() || !targetLoc.ToIntVec3().Roofed())  //Change to more accurate algorithm?
             {
-                shiftDistance += shotVec.magnitude * 1 - Find.WeatherManager.CurWeatherAccuracyMultiplier / 4;
+            	shiftDistance += shotVec.magnitude * (1 - Find.WeatherManager.CurWeatherAccuracyMultiplier / 4);
             }
             if (Find.GlowGrid.PsychGlowAt(targetLoc.ToIntVec3()) == PsychGlow.Dark)
             {
@@ -89,10 +97,12 @@ namespace Combat_Realism
             }
             //First modification of the loc, a random rectangle
             targetLoc += new Vector3(Rand.Range(-shiftDistance, shiftDistance), 0, Rand.Range(-shiftDistance, shiftDistance));
-
+            
             Log.Message("targetLoc after shifting: " + targetLoc.ToString());
 			
             	// ----------------------------------- STEP 2: Estimated shot to hit location
+            
+            shotVec = targetLoc - sourceLoc;	//Updated for the estimation to hit Estimated Location 
             
             //Estimate range on first shot of burst
             if (this.verbProps.burstShotCount == this.burstShotsLeft)
@@ -110,10 +120,6 @@ namespace Combat_Realism
             targetLoc = sourceLoc + shotVec.normalized * this.estimatedTargetDistance;
 			
             Log.Message("targetLoc after range: " + targetLoc.ToString());
-			
-            targetLoc += shotVec.normalized * (recoil.y + 0.5f * Rand.Range(-Math.Abs(recoil.y), Math.Abs(recoil.y)));
-            
-            Log.Message("targetLoc after recoil: " + targetLoc.ToString());
             
             //Lead a moving target
             if (targetPawn != null && targetPawn.pather.Moving)
@@ -135,39 +141,61 @@ namespace Combat_Realism
             }
             
             Log.Message("targetLoc after lead: " + targetLoc.ToString());
-			
+            
+            	// ----------------------------------- STEP 3: Recoil, Skewing, Skill checks, Cover calculations
+            
             shotVec = targetLoc - sourceLoc;	//Reassigned for further calculations
             
-            float angleRequired = ShotAngle(this.verbProps.projectileDef.projectile.speed, this.estimatedTargetDistance, 0f);
+            Vector2 skewVec = new Vector2(0, 0);
+            Vector2 recoilVec = new Vector2(Rand.Range(-Math.Abs(recoil.x), Math.Abs(recoil.x)), Rand.Range(-Math.Abs(recoil.y), Math.Abs(recoil.y)));
             
-            	// ----------------------------------- STEP 3: Recoil, Skewing, Skill checks
-            	
-            float combinedSkew = 0;
+            	//Height difference calculations for ShotAngle
+            float heightDifference = 0;
+            	Building cover = GridsUtility.GetEdifice((targetLoc + shotVec.normalized).ToIntVec3());
+            	float targetableHeight = (targetPawn != null ? targetPawn.BodySize : (this.currentTarget.Thing != null ? this.currentTarget.Thing.def.fillPercent : 0));
+	        	if (cover != null)
+	        	{
+	        		targetableHeight -= cover.def.fillPercent;
+	        	}
+	        	heightDifference += targetableHeight * 0.5f;		//Optimal hit level is halfway
+	        	float shooterHeight = (sourcePawn != null ? sourcePawn.BodySize * 0.75f : (this.caster != null ? this.caster.def.fillPercent : 0));
+	        	heightDifference -= shooterHeight;		//Assuming pawns shoot at 3/4ths of their body size
+           	this.shotHeight = shooterHeight + heightDifference;
+        	skewVec += new Vector2(0, ShotAngle(this.verbProps.projectileDef.projectile.speed, shotVec.magnitude, heightDifference));
             
-            //Get shootervariation
-	        	int prevSeed = Rand.Seed;
-		        	Rand.Seed = this.caster.thingIDNumber;
-		        	float rangeVariation = Rand.Range(0, 2);
-	        	Rand.Seed = prevSeed;
-	        //float randomSkillSkew = (float)Math.Sin((Find.TickManager.TicksAbs / 60) + rangeVariation) * (float)Math.Log(Math.Pow(shootingAccuracy,-3), 8);
+            skewVec += (recoil + Vector2.Scale(recoilMagnitude, recoilVec));
+            
+           		//Get shootervariation
+        	int prevSeed = Rand.Seed;
+	        	Rand.Seed = this.caster.thingIDNumber;
+	        	float rangeVariation = Rand.Range(0, 2);
+        	Rand.Seed = prevSeed;
 	        
-	        //recoilXAmount = 1 (to the right)
-	        //shooterVariation = 
-	        
-	        combinedSkew += (recoil.x + 0.2f * Rand.Range(-Math.Abs(recoil.x), Math.Abs(recoil.x))) + (float)Math.Sin((Find.TickManager.TicksAbs / 60) + rangeVariation) * (float)(1 - Math.Sqrt(1.2 - shootingAccuracy));
-	        
-            Log.Message("recoil and skill Skew: " + combinedSkew.ToString());
+	        int ticks = Find.TickManager.TicksAbs / 60;
+	        float amplitude = (float)(1 - Math.Sqrt(1.2 - shootingAccuracy)) * (float)Math.Cos(5 * ticks);
+	        Vector2 shooterVec = new Vector2(amplitude * (float)Math.Sin((ticks) + rangeVariation), amplitude * (float)Math.Sin((2 * ticks) + rangeVariation));
+		        //sin(2*t)*(cos(5*t)-1)
+		        //sin(2*t)*(cos(5*t)-1)*sin(t)
+	        skewVec += shooterVec;
             
             	// ----------------------------------- STEP 4: Mechanical variation
             	
             //Get shotvariation
-            combinedSkew += this.cpCustomGet != null ? Rand.Range(-this.cpCustomGet.moaValue, this.cpCustomGet.moaValue) : 0;
+            Vector2 moaVec = new Vector2(0, 0);
+            if(this.cpCustomGet.moaValue != 0)
+            {
+            	moaVec.Set(Rand.Range(-1, 1), Rand.Range(-1, 1));
+	            moaVec = moaVec.normalized * (moaVec.magnitude < 1 ? moaVec.magnitude : 1) * this.cpCustomGet.moaValue;
+            }
+	       	skewVec += moaVec;
+            
+            Log.Message("combined Skew vector: " + skewVec.ToString() + " | recoil: "+recoilVec.ToString()+" ..+skill: "+shooterVec.ToString()+" ..+moa: "+moaVec.ToString());
 			
-            Log.Message("combined Skew: " + combinedSkew.ToString());
-
             //Skewing		-		Applied after the leading calculations to not screw them up
-            targetLoc = sourceLoc + (Quaternion.AngleAxis(combinedSkew, Vector3.up) * shotVec);	//THIS ONE REQUIRES UPDATED SHOTVECTOR
-
+            targetLoc = sourceLoc + (Quaternion.AngleAxis(skewVec.x, Vector3.up) * shotVec).normalized * DistanceTraveled(this.verbProps.projectileDef.projectile.speed, skewVec.y, heightDifference);
+            
+            this.shotAngle = skewVec.y;
+            
             Log.Message("targetLoc after skewing: " + targetLoc.ToString());
             
             return targetLoc;
@@ -255,13 +283,16 @@ namespace Combat_Realism
 
             //New aiming algorithm
             projectile.canFreeIntercept = true;
+            Vector3 targetVec3 = this.ShiftTarget();
+            projectile.shotAngle = this.shotAngle;
+            projectile.shotHeight = this.shotHeight;
             if (this.currentTarget.Thing != null)
             {
-                projectile.Launch(this.caster, casterExactPosition, new TargetInfo(this.currentTarget.Thing), this.ShiftTarget(), this.ownerEquipment);
+                projectile.Launch(this.caster, casterExactPosition, new TargetInfo(this.currentTarget.Thing), targetVec3, this.ownerEquipment);
             }
             else
             {
-                projectile.Launch(this.caster, casterExactPosition, new TargetInfo(shootLine.Dest), this.ShiftTarget(), this.ownerEquipment);
+                projectile.Launch(this.caster, casterExactPosition, new TargetInfo(shootLine.Dest), targetVec3, this.ownerEquipment);
             }
             return true;
         }

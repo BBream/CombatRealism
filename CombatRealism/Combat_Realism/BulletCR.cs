@@ -10,7 +10,6 @@ namespace Combat_Realism
         private const float StunChance = 0.1f;
         protected override void Impact(Thing hitThing)
         {
-            base.Impact(hitThing);
             if (hitThing != null)
             {
                 int damageAmountBase = this.def.projectile.damageAmountBase;
@@ -23,6 +22,7 @@ namespace Combat_Realism
                 SoundDefOf.BulletImpactGround.PlayOneShot(base.Position);
                 MoteThrower.ThrowStatic(this.ExactPosition, ThingDefOf.Mote_ShotHit_Dirt, 1f);
             }
+            base.Impact(hitThing);
         }
     }
 }
