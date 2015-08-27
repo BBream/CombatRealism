@@ -238,7 +238,10 @@ namespace Combat_Realism
                     }
                     if (thing.def.category == ThingCategory.Pawn)
                     {
-                    	return ImpactThroughBodySize(thing, height);
+                    	bool impacted = this.ImpactThroughBodySize(thing, height);
+                    	Log.Message("Impacting: " + thing.ToString() + " " + (impacted ? "FAILED" : "Success"));
+                    	if (impacted)
+                    		return true;
                     }
                     //Check for trees		--		HARDCODED RNG IN HERE
                     if (thing.def.category == ThingCategory.Plant && thing.def.altitudeLayer == AltitudeLayer.BuildingTall && Rand.Value < thing.def.fillPercent)
