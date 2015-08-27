@@ -46,7 +46,6 @@ namespace Combat_Realism
 		{
 			float gravity = 9.8f;
 			float angle = (float)Math.Atan((Math.Pow(velocity, 2) - Math.Sqrt(Math.Pow(velocity, 4) - gravity * (gravity * Math.Pow(range, 2) + 2 * heightDifference * Math.Pow(velocity, 2)))) / (gravity * range));
-			angle *= 180 / (float)Math.PI;
 			return angle;
 		}
 		
@@ -54,6 +53,7 @@ namespace Combat_Realism
 		{
 			float gravity = 9.8f;
 			float distance = (float)((velocity * Math.Cos(angle)) / gravity) * (float)(velocity * Math.Sin(angle) + Math.Sqrt(Math.Pow(velocity * Math.Sin(angle), 2) + 2 * gravity * heightDifference));
+			Log.Message("v=" + velocity + " a=" + angle + " h0="+heightDifference+" d="+distance);
 			return distance;
 		}
 		
@@ -87,8 +87,8 @@ namespace Combat_Realism
             
             //Shift for lighting
             float shiftDistance = shotVec.magnitude * Mathf.Lerp(0.05f, 0f, Find.GlowGrid.GameGlowAt(targetLoc.ToIntVec3()));
-            Log.Message("Target lighting: " + Find.GlowGrid.GameGlowAt(targetLoc.ToIntVec3()).ToString());
-            Log.Message("Shift after lighting: " + shiftDistance.ToString());
+            //Log.Message("Target lighting: " + Find.GlowGrid.GameGlowAt(targetLoc.ToIntVec3()).ToString());
+            //Log.Message("Shift after lighting: " + shiftDistance.ToString());
 
             //Shift for weather
             if (!this.caster.Position.Roofed() || !targetLoc.ToIntVec3().Roofed())  //Change to more accurate algorithm?
@@ -97,14 +97,14 @@ namespace Combat_Realism
                 Log.Message("Weather accuracy mult: " + Find.WeatherManager.CurWeatherAccuracyMultiplier.ToString());
                 Log.Message("Shift after weather: " + shiftDistance.ToString());
             }
-
+            
             //First modification of the loc, a random rectangle
             if (shiftDistance > 0)
             {
                 targetLoc += new Vector3(Rand.Range(-shiftDistance, shiftDistance), 0, Rand.Range(-shiftDistance, shiftDistance));
             }
             
-            Log.Message("targetLoc after shifting: " + targetLoc.ToString());
+            //Log.Message("targetLoc after shifting: " + targetLoc.ToString());
 			
             	// ----------------------------------- STEP 2: Estimated shot to hit location
             
@@ -125,7 +125,7 @@ namespace Combat_Realism
             
             targetLoc = sourceLoc + shotVec.normalized * this.estimatedTargetDistance;
 			
-            Log.Message("targetLoc after range: " + targetLoc.ToString());
+            //Log.Message("targetLoc after range: " + targetLoc.ToString());
             
             //Lead a moving target
             if (targetPawn != null && targetPawn.pather.Moving)
@@ -140,7 +140,7 @@ namespace Combat_Realism
                 targetLoc += moveVec * (leadDistance + Rand.Range(-leadVariation, leadVariation));
             }
             
-            Log.Message("targetLoc after lead: " + targetLoc.ToString());
+            //Log.Message("targetLoc after lead: " + targetLoc.ToString());
             
             	// ----------------------------------- STEP 3: Recoil, Skewing, Skill checks, Cover calculations
             
@@ -162,7 +162,7 @@ namespace Combat_Realism
 	        	heightDifference += targetableHeight * 0.5f;		//Optimal hit level is halfway
 	        	this.shotHeight = (sourcePawn != null ? sourcePawn.BodySize * 0.75f : (this.caster != null ? this.caster.def.fillPercent : 0));
 	        	heightDifference -= this.shotHeight;		//Assuming pawns shoot at 3/4ths of their body size
-        	skewVec += new Vector2(0, ShotAngle(this.verbProps.projectileDef.projectile.speed, shotVec.magnitude, heightDifference));
+	        skewVec += new Vector2(0, ShotAngle(this.verbProps.projectileDef.projectile.speed, shotVec.magnitude, heightDifference) * (180 / (float)Math.PI));
             
            		//Get shootervariation
         	int prevSeed = Rand.Seed;
@@ -192,12 +192,16 @@ namespace Combat_Realism
             Log.Message("combined Skew vector: " + skewVec.ToString() + " | recoil: "+recoil.ToString()+" ..+recoilVec: "+recoilVec.ToString()+" ..+skill: "+shooterVec.ToString()+" ..+moa: "+moaVec.ToString());
 			
             //Skewing		-		Applied after the leading calculations to not screw them up
-            targetLoc = sourceLoc + (shotVec.normalized * DistanceTraveled(this.verbProps.projectileDef.projectile.speed, skewVec.y, this.shotHeight));
+            float distanceTraveled = DistanceTraveled(this.verbProps.projectileDef.projectile.speed, (float)(skewVec.y * (Math.PI / 180)), this.shotHeight);
+            Log.Message("DistanceTraveled "+distanceTraveled.ToString());
+            targetLoc = sourceLoc + ((targetLoc - sourceLoc).normalized * distanceTraveled);
+            Log.Message("targetLoc Calculation: "+sourceLoc.ToString()+" + ("+(targetLoc - sourceLoc).normalized+" * "+distanceTraveled+")");
+            Log.Message("targetLoc after distance adjusting"+targetLoc.ToString());
             targetLoc = sourceLoc + (Quaternion.AngleAxis(skewVec.x, Vector3.up) * (targetLoc - sourceLoc));
-            
-            this.shotAngle = skewVec.y;
-            
             Log.Message("targetLoc after skewing: " + targetLoc.ToString());
+            
+            this.shotAngle = (float)(skewVec.y * (Math.PI / 180));
+            
             
             return targetLoc;
         }
