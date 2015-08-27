@@ -85,18 +85,24 @@ namespace Combat_Realism
             
             Vector3 shotVec = targetLoc - sourceLoc;    //Assigned for use in Estimated Location
             
-            //Shift for weather/lighting/recoil
-            float shiftDistance = 0;
+            //Shift for lighting
+            float shiftDistance = shotVec.magnitude * Mathf.Lerp(0.05f, 0f, Find.GlowGrid.GameGlowAt(targetLoc.ToIntVec3()));
+            Log.Message("Target lighting: " + Find.GlowGrid.GameGlowAt(targetLoc.ToIntVec3()).ToString());
+            Log.Message("Shift after lighting: " + shiftDistance.ToString());
+
+            //Shift for weather
             if (!this.caster.Position.Roofed() || !targetLoc.ToIntVec3().Roofed())  //Change to more accurate algorithm?
             {
-            	shiftDistance += shotVec.magnitude * (1 - Find.WeatherManager.CurWeatherAccuracyMultiplier / 4);
+                shiftDistance += shotVec.magnitude * (1 - Find.WeatherManager.CurWeatherAccuracyMultiplier) / 10;
+                Log.Message("Weather accuracy mult: " + Find.WeatherManager.CurWeatherAccuracyMultiplier.ToString());
+                Log.Message("Shift after weather: " + shiftDistance.ToString());
             }
-            if (Find.GlowGrid.PsychGlowAt(targetLoc.ToIntVec3()) == PsychGlow.Dark)
-            {
-                shiftDistance += shotVec.magnitude * 0.05f;
-            }
+
             //First modification of the loc, a random rectangle
-            targetLoc += new Vector3(Rand.Range(-shiftDistance, shiftDistance), 0, Rand.Range(-shiftDistance, shiftDistance));
+            if (shiftDistance > 0)
+            {
+                targetLoc += new Vector3(Rand.Range(-shiftDistance, shiftDistance), 0, Rand.Range(-shiftDistance, shiftDistance));
+            }
             
             Log.Message("targetLoc after shifting: " + targetLoc.ToString());
 			
@@ -108,7 +114,7 @@ namespace Combat_Realism
             if (this.verbProps.burstShotCount == this.burstShotsLeft)
             {
                 float actualRange = Vector3.Distance(targetLoc, sourceLoc);
-                float estimationDeviation = (this.cpCustomGet.scope ? 0.5f : 1f) * ((1 - this.shootingAccuracy) * actualRange);
+                float estimationDeviation = ((1 - this.shootingAccuracy) * actualRange) * (1.5f - this.verbProps.accuracyLong);
                 this.estimatedTargetDistance = Mathf.Clamp(Rand.Gaussian(actualRange, estimationDeviation / 3), actualRange - estimationDeviation, actualRange + estimationDeviation);
             }
             
@@ -126,16 +132,10 @@ namespace Combat_Realism
             {
                 float timeToTarget = this.estimatedTargetDistance / this.verbProps.projectileDef.projectile.speed;
                 float leadDistance = targetPawn.GetStatValue(StatDefOf.MoveSpeed, false) * timeToTarget;
-                Vector3 moveVec = targetPawn.pather.nextCell.ToVector3() - targetPawn.DrawPos;
-				
-                float leadVariation = 0;
-                if (this.CasterIsPawn)
-                {
-                    if (this.cpCustomGet != null)
-                    {
-                        leadVariation = this.cpCustomGet.scope ? (1 - shootingAccuracy) / 4 : 1 - shootingAccuracy;
-                    }
-                }
+                Vector3 moveVec = targetPawn.pather.nextCell.ToVector3() - Vector3.Scale(targetPawn.DrawPos, new Vector3(1, 0, 1));
+
+                float leadVariation = (1 - shootingAccuracy) * (1.5f - this.verbProps.accuracyMedium);
+
                 //targetLoc += moveVec * Rand.Gaussian(leadDistance, leadDistance * leadVariation);		GAUSSIAN removed for now
                 targetLoc += moveVec * (leadDistance + Rand.Range(-leadVariation, leadVariation));
             }
@@ -185,7 +185,8 @@ namespace Combat_Realism
             if(this.cpCustomGet.moaValue != 0)
             {
             	moaVec.Set(Rand.Range(-1, 1), Rand.Range(-1, 1));
-	            moaVec = moaVec.normalized * (moaVec.magnitude < 1 ? moaVec.magnitude : 1) * this.cpCustomGet.moaValue;
+            	float amplitude = moaVec.magnitude * this.cpCustomGet.moaValue * (1.5f - this.verbProps.accuracyShort);
+	            moaVec = moaVec.normalized * amplitude * this.cpCustomGet.moaValue;
             }
 	       	skewVec += moaVec;
             
