@@ -9,7 +9,7 @@ namespace Combat_Realism
 	{
         private float estimatedTargetDistance;  //Stores estimates target distance for each burst, so each burst shot uses the same
 		private const float accuracyExponent = -2f;
-		private Vector2 recoilMagnitude = new Vector2(0.2f, 0.5f);
+		private Vector2 recoilMagnitude = new Vector2(0.6f, 0.5f);
 		private float shotAngle;
 		private float shotHeight;
         
@@ -162,20 +162,6 @@ namespace Combat_Realism
 	        	heightDifference -= shooterHeight;		//Assuming pawns shoot at 3/4ths of their body size
            	this.shotHeight = shooterHeight + heightDifference;
         	skewVec += new Vector2(0, ShotAngle(this.verbProps.projectileDef.projectile.speed, shotVec.magnitude, heightDifference));
-            
-<<<<<<< HEAD
-            //Get shootervariation
-	        	int prevSeed = Rand.Seed;
-		        	Rand.Seed = this.caster.thingIDNumber;
-		        	float rangeVariation = Rand.Range(0, 2);
-	        	Rand.Seed = prevSeed;
-	        //float randomSkillSkew = (float)Math.Sin((Find.TickManager.TicksAbs / 60) + rangeVariation) * (float)Math.Log(Math.Pow(shootingAccuracy,-3), 8);
-	        
-	        //recoilXAmount = 1 (to the right)
-	        //shooterVariation = 
-	        
-	        combinedSkew += (recoil.x + 0.6f * Rand.Range(-Math.Abs(recoil.x), Math.Abs(recoil.x))) + (float)Math.Sin((Find.TickManager.TicksAbs / 60) + rangeVariation) * (float)(1 - Math.Sqrt(1.2 - shootingAccuracy));
-=======
             skewVec += (recoil + Vector2.Scale(recoilMagnitude, recoilVec));
             
            		//Get shootervariation
@@ -183,7 +169,6 @@ namespace Combat_Realism
 	        	Rand.Seed = this.caster.thingIDNumber;
 	        	float rangeVariation = Rand.Range(0, 2);
         	Rand.Seed = prevSeed;
->>>>>>> origin/master
 	        
 	        int ticks = Find.TickManager.TicksAbs / 60;
 	        float amplitude = (float)(1 - Math.Sqrt(1.2 - shootingAccuracy)) * (float)Math.Cos(5 * ticks);
