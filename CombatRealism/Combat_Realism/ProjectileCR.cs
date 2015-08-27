@@ -108,7 +108,7 @@ namespace Combat_Realism
         }
 
         //Added new calculations for downed pawns, destination
-        new public void Launch(Thing launcher, Vector3 origin, TargetInfo targ, Thing equipment = null)
+        public void Launch(Thing launcher, Vector3 origin, TargetInfo targ, Thing equipment = null)
         {
             this.launcher = launcher;
             this.origin = origin;
@@ -235,38 +235,28 @@ namespace Combat_Realism
                         {
                         	return ImpactThroughBodySize(thing, collateralChance);
                         }
-                        
-                        /*Pawn pawn = (Pawn)thing;
-                        float collateralChance = 0.45f;
-                        if (pawn.GetPosture() != PawnPosture.Standing)
-                        {
-                            if (pawn.def.race.baseBodySize > 1)
-                            {
-                                collateralChance *= 0.7f;
-                            }
-                            else if (pawn.def.race.baseBodySize > 0.5)
-                            {
-                                collateralChance *= 0.2f;
-                            }
-                            else
-                            {
-                                collateralChance *= 0.8f;
-                            }
-                        }
-                        collateralChance *= pawn.BodySize;
-
-                        if (Rand.Value < collateralChance)
-                        {
-                            this.Impact(pawn);
-                            return true;
-                        }*/
                     }
-                    //Check for cover
-                    if (Rand.Value < thing.def.fillPercent)
+                    //Check for trees
+                    if (thing.def.category == ThingCategory.Plant && thing.def.altitudeLayer == AltitudeLayer.BuildingTall && Rand.Value < thing.def.fillPercent)
                     {
                         this.Impact(thing);
                         return true;
                     }
+                    //Check for cover
+                    if (this.ticksToImpact < this.StartingTicksToImpact / 2 && (float)Math.Pow(Vector3.Distance(Vector3.Scale(this.DrawPos, new Vector3(1, 0, 1)), this.destination) + 4, 0.5f) - 1.5 < thing.def.fillPercent)
+                    {
+                        this.Impact(thing);
+                        Log.Message("Impacting: " + thing.ToString());
+                        return true;
+                    }
+                    /*
+                    //Placeholder covercheck
+                    if (this.ticksToImpact < this.StartingTicksToImpact / 2
+                        && Rand.Value < thing.def.fillPercent * 1 - this.ticksToImpact / this.StartingTicksToImpact)
+                    {
+                        this.Impact(thing);
+                        return true;
+                    }*/
 
                 }
             }

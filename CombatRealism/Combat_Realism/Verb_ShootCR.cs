@@ -69,27 +69,26 @@ namespace Combat_Realism
             	// ----------------------------------- STEP 1: Estimated location
             
             //Shift for weather/lighting/recoil
-            //float shiftDistance = this.GetRecoilAmount();
-            //Log.Message("shiftDistance: " + shiftDistance.ToString());
-            //if (!this.caster.Position.Roofed() || !targetLoc.ToIntVec3().Roofed())  //Change to more accurate algorithm?
-            //{
-            //    shiftDistance += targetDistance * 1 - Find.WeatherManager.CurWeatherAccuracyMultiplier;
-            //}
-            //if (Find.GlowGrid.PsychGlowAt(targetLoc.ToIntVec3()) == PsychGlow.Dark)
-            //{
-            //    shiftDistance += targetDistance * 0.2f;
-            //}
-            //Last modification of the loc, a random rectangle
-            //targetLoc += new Vector3(Rand.Range(-shiftDistance, shiftDistance), 0, Rand.Range(-shiftDistance, shiftDistance));
+            float shiftDistance = 0;
+            float actualRange = Vector3.Distance(targetLoc, sourceLoc);
+            if (!this.caster.Position.Roofed() || !targetLoc.ToIntVec3().Roofed())  //Change to more accurate algorithm?
+            {
+                shiftDistance += actualRange * 1 - Find.WeatherManager.CurWeatherAccuracyMultiplier / 4;
+            }
+            if (Find.GlowGrid.PsychGlowAt(targetLoc.ToIntVec3()) == PsychGlow.Dark)
+            {
+                shiftDistance += actualRange * 0.05f;
+            }
+            //First modification of the loc, a random rectangle
+            targetLoc += new Vector3(Rand.Range(-shiftDistance, shiftDistance), 0, Rand.Range(-shiftDistance, shiftDistance));
 
-            //Log.Message("targetLoc after shifting: " + targetLoc.ToString());
+            Log.Message("targetLoc after shifting: " + targetLoc.ToString());
 			
             	// ----------------------------------- STEP 2: Estimated shot to hit location
             
             //Estimate range on first shot of burst
             if (this.verbProps.burstShotCount == this.burstShotsLeft)
             {
-                float actualRange = Vector3.Distance(targetLoc, sourceLoc);
                 float estimationDeviation = (this.cpCustomGet.scope ? 0.5f : 1f) * ((1 - this.shootingAccuracy) * actualRange);
                 this.estimatedTargetDistance = Mathf.Clamp(Rand.Gaussian(actualRange, estimationDeviation / 3), actualRange - estimationDeviation, actualRange + estimationDeviation);
             }
@@ -103,7 +102,7 @@ namespace Combat_Realism
 			
             Log.Message("targetLoc after range: " + targetLoc.ToString());
 			
-            targetLoc += shotVec.normalized * (recoil.y + 0.2f * Rand.Range(-Math.Abs(recoil.y), Math.Abs(recoil.y)));
+            targetLoc += shotVec.normalized * (recoil.y + 0.5f * Rand.Range(-Math.Abs(recoil.y), Math.Abs(recoil.y)));
             
             Log.Message("targetLoc after recoil: " + targetLoc.ToString());
             
