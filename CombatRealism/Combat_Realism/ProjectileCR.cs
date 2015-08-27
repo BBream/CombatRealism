@@ -82,6 +82,7 @@ namespace Combat_Realism
         //New variables
         public float shotAngle = 0f;
         public float shotHeight = 0f;
+        protected float downedHitFactor = 0.2f;
         
         private float Distance
         {
@@ -239,8 +240,8 @@ namespace Combat_Realism
                     {
                     	return ImpactThroughBodySize(thing, height);
                     }
-                    //Check for trees
-                    if (thing.def.category == ThingCategory.Plant && thing.def.altitudeLayer == AltitudeLayer.BuildingTall && height < thing.def.fillPercent)
+                    //Check for trees		--		HARDCODED RNG IN HERE
+                    if (thing.def.category == ThingCategory.Plant && thing.def.altitudeLayer == AltitudeLayer.BuildingTall && Rand.Value < thing.def.fillPercent)
                     {
                         this.Impact(thing);
                         return true;
@@ -266,8 +267,16 @@ namespace Combat_Realism
             Pawn pawn = thing as Pawn;
             if (pawn != null)
             {
-            	float downedSize = (float)(pawn.BodySize > 1 ? pawn.BodySize - 0.5 : 0.5 * pawn.BodySize);
+            	float downedSize = (float)(pawn.BodySize > 1 ? pawn.BodySize - (1 - this.downedHitFactor) : this.downedHitFactor * pawn.BodySize);
             	if (height < (pawn.Downed ? downedSize : pawn.BodySize))
+            	{
+            		this.Impact(thing);
+            		return true;
+            	}
+            }
+            if (thing.def.fillPercent > 0 || thing.def.Fillage == FillCategory.Full)
+            {
+            	if (height < thing.def.fillPercent || thing.def.Fillage == FillCategory.Full)
             	{
             		this.Impact(thing);
             		return true;
@@ -311,11 +320,9 @@ namespace Combat_Realism
                 for (int i = 0; i < list.Count; i++)
                 {
                     Thing thing2 = list[i];
-                    if (height < thing2.def.fillPercent || thing2.def.passability != Traversability.Standable)
-                    {
-                        this.Impact(thing2);
-                        return;
-                    }
+                    bool impacted = this.ImpactThroughBodySize(thing2, height);
+                    if (impacted)
+                    	return;
                 }
                 this.Impact(null);
                 return;
