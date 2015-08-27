@@ -160,9 +160,8 @@ namespace Combat_Realism
 	        		targetableHeight -= cover.def.fillPercent;
 	        	}
 	        	heightDifference += targetableHeight * 0.5f;		//Optimal hit level is halfway
-	        	float shooterHeight = (sourcePawn != null ? sourcePawn.BodySize * 0.75f : (this.caster != null ? this.caster.def.fillPercent : 0));
-	        	heightDifference -= shooterHeight;		//Assuming pawns shoot at 3/4ths of their body size
-           	this.shotHeight = shooterHeight + heightDifference;
+	        	this.shotHeight = (sourcePawn != null ? sourcePawn.BodySize * 0.75f : (this.caster != null ? this.caster.def.fillPercent : 0));
+	        	heightDifference -= this.shotHeight;		//Assuming pawns shoot at 3/4ths of their body size
         	skewVec += new Vector2(0, ShotAngle(this.verbProps.projectileDef.projectile.speed, shotVec.magnitude, heightDifference));
             
            		//Get shootervariation
