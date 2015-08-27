@@ -61,7 +61,7 @@ namespace Combat_Realism
             targetLoc.Scale(new Vector3(1, 0, 1));
             sourceLoc.Scale(new Vector3(1, 0, 1));
             
-            Vector3 shotVec = targetLoc - sourceLoc;    //Don't reassign this or silly things will happen
+            Vector3 shotVec = targetLoc - sourceLoc;
             
             Log.Message("targetLoc after initialize: " + targetLoc.ToString());
             
@@ -77,18 +77,25 @@ namespace Combat_Realism
             
             	// ----------------------------------- STEP 1: Estimated location
             
-            //Shift for weather/lighting/recoil
-            float shiftDistance = 0;
+            //Shift for lighting
+            float shiftDistance = shotVec.magnitude * Mathf.Lerp(0.05f, 0f, Find.GlowGrid.GameGlowAt(targetLoc.ToIntVec3()));
+            Log.Message("Target lighting: " + Find.GlowGrid.GameGlowAt(targetLoc.ToIntVec3()).ToString());
+            Log.Message("Shift after lighting: " + shiftDistance.ToString());
+
+            //Shift for weather
             if (!this.caster.Position.Roofed() || !targetLoc.ToIntVec3().Roofed())  //Change to more accurate algorithm?
             {
-                shiftDistance += shotVec.magnitude * 1 - Find.WeatherManager.CurWeatherAccuracyMultiplier / 4;
+                shiftDistance += shotVec.magnitude * (1 - Find.WeatherManager.CurWeatherAccuracyMultiplier) / 10;
+                Log.Message("Weather accuracy mult: " + Find.WeatherManager.CurWeatherAccuracyMultiplier.ToString());
+                Log.Message("Shift after weather: " + shiftDistance.ToString());
             }
-            if (Find.GlowGrid.PsychGlowAt(targetLoc.ToIntVec3()) == PsychGlow.Dark)
-            {
-                shiftDistance += shotVec.magnitude * 0.05f;
-            }
+
             //First modification of the loc, a random rectangle
-            targetLoc += new Vector3(Rand.Range(-shiftDistance, shiftDistance), 0, Rand.Range(-shiftDistance, shiftDistance));
+            if (shiftDistance > 0)
+            {
+                targetLoc += new Vector3(Rand.Range(-shiftDistance, shiftDistance), 0, Rand.Range(-shiftDistance, shiftDistance));
+                shotVec = targetLoc - sourceLoc;
+            }
 
             Log.Message("targetLoc after shifting: " + targetLoc.ToString());
 			
@@ -120,7 +127,7 @@ namespace Combat_Realism
             {
                 float timeToTarget = this.estimatedTargetDistance / this.verbProps.projectileDef.projectile.speed;
                 float leadDistance = targetPawn.GetStatValue(StatDefOf.MoveSpeed, false) * timeToTarget;
-                Vector3 moveVec = targetPawn.pather.nextCell.ToVector3() - targetPawn.DrawPos;
+                Vector3 moveVec = targetPawn.pather.nextCell.ToVector3() - Vector3.Scale(targetPawn.DrawPos, new Vector3(1, 0, 1));
 				
                 float leadVariation = 0;
                 if (this.CasterIsPawn)
