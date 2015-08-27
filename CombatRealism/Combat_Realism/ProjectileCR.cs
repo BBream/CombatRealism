@@ -80,7 +80,6 @@ namespace Combat_Realism
         }
 
         //New variables
-        private bool targetDownedOnSpawn = false;
         public float shotAngle = 0f;
         public float shotHeight = 0f;
         
@@ -115,7 +114,6 @@ namespace Combat_Realism
             Scribe_Values.LookValue<int>(ref this.ticksToImpact, "ticksToImpact", 0, false);
 
             //Here be new variables
-            Scribe_Values.LookValue<bool>(ref this.targetDownedOnSpawn, "targetDownedOnSpawn", false, false);
             Scribe_Values.LookValue<float>(ref this.shotAngle, "shotAngle", 0f, true);
             Scribe_Values.LookValue<float>(ref this.shotAngle, "shotHeight", 0f, true);
         }
@@ -145,11 +143,6 @@ namespace Combat_Realism
             if (targ.Thing != null)
             {
                 this.assignedTarget = targ.Thing;
-                Pawn pawn = this.assignedTarget as Pawn;
-                if (pawn != null)
-                {
-                    this.targetDownedOnSpawn = pawn.Downed;
-                }
             }
             //Checking if a new destination was set
             if (this.destination == null)
