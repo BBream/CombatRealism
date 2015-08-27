@@ -155,7 +155,7 @@ namespace Combat_Realism
 	        //recoilXAmount = 1 (to the right)
 	        //shooterVariation = 
 	        
-	        combinedSkew += (recoil.x + 0.2f * Rand.Range(-Math.Abs(recoil.x), Math.Abs(recoil.x))) + (float)Math.Sin((Find.TickManager.TicksAbs / 60) + rangeVariation) * (float)(1 - Math.Sqrt(1.2 - shootingAccuracy));
+	        combinedSkew += (recoil.x + 0.6f * Rand.Range(-Math.Abs(recoil.x), Math.Abs(recoil.x))) + (float)Math.Sin((Find.TickManager.TicksAbs / 60) + rangeVariation) * (float)(1 - Math.Sqrt(1.2 - shootingAccuracy));
 	        
             Log.Message("recoil and skill Skew: " + combinedSkew.ToString());
             
