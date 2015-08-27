@@ -105,7 +105,7 @@ namespace Combat_Realism
             if (this.verbProps.burstShotCount == this.burstShotsLeft)
             {
                 float actualRange = Vector3.Distance(targetLoc, sourceLoc);
-                float estimationDeviation = (this.cpCustomGet.scope ? 0.5f : 1f) * ((1 - this.shootingAccuracy) * actualRange);
+                float estimationDeviation = ((1 - this.shootingAccuracy) * actualRange) * (1.5f - this.verbProps.accuracyLong);
                 this.estimatedTargetDistance = Mathf.Clamp(Rand.Gaussian(actualRange, estimationDeviation / 3), actualRange - estimationDeviation, actualRange + estimationDeviation);
             }
             
@@ -128,15 +128,9 @@ namespace Combat_Realism
                 float timeToTarget = this.estimatedTargetDistance / this.verbProps.projectileDef.projectile.speed;
                 float leadDistance = targetPawn.GetStatValue(StatDefOf.MoveSpeed, false) * timeToTarget;
                 Vector3 moveVec = targetPawn.pather.nextCell.ToVector3() - Vector3.Scale(targetPawn.DrawPos, new Vector3(1, 0, 1));
-				
-                float leadVariation = 0;
-                if (this.CasterIsPawn)
-                {
-                    if (this.cpCustomGet != null)
-                    {
-                        leadVariation = this.cpCustomGet.scope ? (1 - shootingAccuracy) / 4 : 1 - shootingAccuracy;
-                    }
-                }
+
+                float leadVariation = (1 - shootingAccuracy) * (1.5f - this.verbProps.accuracyMedium);
+
                 //targetLoc += moveVec * Rand.Gaussian(leadDistance, leadDistance * leadVariation);		GAUSSIAN removed for now
                 targetLoc += moveVec * (leadDistance + Rand.Range(-leadVariation, leadVariation));
             }
@@ -168,7 +162,8 @@ namespace Combat_Realism
             	// ----------------------------------- STEP 4: Mechanical variation
             	
             //Get shotvariation
-            combinedSkew += this.cpCustomGet != null ? Rand.Range(-this.cpCustomGet.moaValue, this.cpCustomGet.moaValue) : 0;
+            float effectiveMoa = this.cpCustomGet.moaValue * (1.5f - this.verbProps.accuracyShort);
+            combinedSkew += this.cpCustomGet != null ? Rand.Range(-effectiveMoa, effectiveMoa) : 0;
 			
             Log.Message("combined Skew: " + combinedSkew.ToString());
 
