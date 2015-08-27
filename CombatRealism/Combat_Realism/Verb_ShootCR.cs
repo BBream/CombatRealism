@@ -38,6 +38,15 @@ namespace Combat_Realism
 				return 0.98f;
 			}
 		}
+		
+		private float ShotAngle(float velocity, float range, float heightDifference)
+		{
+			float gravity = 9.8f;
+			float angle = (float)Math.Atan((Math.Pow(velocity, 2) - Math.Sqrt(Math.Pow(velocity, 4) - gravity * (gravity * Math.Pow(range, 2) + 2 * heightDifference * Math.Pow(velocity, 2)))) / (gravity * range));
+			angle *= 180 / (float)Math.PI;
+			return angle;
+		}
+		
         /// <summary>
         /// Shifts the original target position in accordance with target leading, range estimation and weather/lighting effects
         /// </summary>
@@ -127,12 +136,14 @@ namespace Combat_Realism
             
             Log.Message("targetLoc after lead: " + targetLoc.ToString());
 			
-            	// ----------------------------------- STEP 3: Recoil, start of skewing
-           	
+            shotVec = targetLoc - sourceLoc;	//Reassigned for further calculations
+            
+            float angleRequired = ShotAngle(this.verbProps.projectileDef.projectile.speed, this.estimatedTargetDistance, 0f);
+            
+            	// ----------------------------------- STEP 3: Recoil, Skewing, Skill checks
+            	
             float combinedSkew = 0;
             
-            	// ----------------------------------- STEP 4: Skill checks
-            	
             //Get shootervariation
 	        	int prevSeed = Rand.Seed;
 		        	Rand.Seed = this.caster.thingIDNumber;
@@ -147,7 +158,7 @@ namespace Combat_Realism
 	        
             Log.Message("recoil and skill Skew: " + combinedSkew.ToString());
             
-            	// ----------------------------------- STEP 5: Mechanical variation
+            	// ----------------------------------- STEP 4: Mechanical variation
             	
             //Get shotvariation
             combinedSkew += this.cpCustomGet != null ? Rand.Range(-this.cpCustomGet.moaValue, this.cpCustomGet.moaValue) : 0;
@@ -155,7 +166,7 @@ namespace Combat_Realism
             Log.Message("combined Skew: " + combinedSkew.ToString());
 
             //Skewing		-		Applied after the leading calculations to not screw them up
-            targetLoc = sourceLoc + (Quaternion.AngleAxis(combinedSkew, Vector3.up) * (targetLoc - sourceLoc));	//THIS ONE REQUIRES UPDATED SHOTVECTOR
+            targetLoc = sourceLoc + (Quaternion.AngleAxis(combinedSkew, Vector3.up) * shotVec);	//THIS ONE REQUIRES UPDATED SHOTVECTOR
 
             Log.Message("targetLoc after skewing: " + targetLoc.ToString());
             
