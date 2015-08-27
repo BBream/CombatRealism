@@ -147,7 +147,9 @@ namespace Combat_Realism
             shotVec = targetLoc - sourceLoc;	//Reassigned for further calculations
             
             Vector2 skewVec = new Vector2(0, 0);
+            
             Vector2 recoilVec = new Vector2(Rand.Range(-Math.Abs(recoil.x), Math.Abs(recoil.x)), Rand.Range(-Math.Abs(recoil.y), Math.Abs(recoil.y)));
+            skewVec += (recoil + Vector2.Scale(recoilMagnitude, recoilVec));
             
             	//Height difference calculations for ShotAngle
             float heightDifference = 0;
@@ -162,7 +164,6 @@ namespace Combat_Realism
 	        	heightDifference -= shooterHeight;		//Assuming pawns shoot at 3/4ths of their body size
            	this.shotHeight = shooterHeight + heightDifference;
         	skewVec += new Vector2(0, ShotAngle(this.verbProps.projectileDef.projectile.speed, shotVec.magnitude, heightDifference));
-            skewVec += (recoil + Vector2.Scale(recoilMagnitude, recoilVec));
             
            		//Get shootervariation
         	int prevSeed = Rand.Seed;
@@ -184,8 +185,8 @@ namespace Combat_Realism
             if(this.cpCustomGet.moaValue != 0)
             {
             	moaVec.Set(Rand.Range(-1, 1), Rand.Range(-1, 1));
-            	float amplitude = moaVec.magnitude * this.cpCustomGet.moaValue * (1.5f - this.verbProps.accuracyShort);
-	            moaVec = moaVec.normalized * amplitude * this.cpCustomGet.moaValue;
+            	float moaAmplitude = moaVec.magnitude * this.cpCustomGet.moaValue * (1.5f - this.verbProps.accuracyShort);
+	            moaVec = moaVec.normalized * moaAmplitude * this.cpCustomGet.moaValue;
             }
 	       	skewVec += moaVec;
             
