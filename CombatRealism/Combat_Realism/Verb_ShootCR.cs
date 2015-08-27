@@ -70,14 +70,13 @@ namespace Combat_Realism
             
             //Shift for weather/lighting/recoil
             float shiftDistance = 0;
-            float actualRange = Vector3.Distance(targetLoc, sourceLoc);
             if (!this.caster.Position.Roofed() || !targetLoc.ToIntVec3().Roofed())  //Change to more accurate algorithm?
             {
-                shiftDistance += actualRange * 1 - Find.WeatherManager.CurWeatherAccuracyMultiplier / 4;
+                shiftDistance += shotVec.magnitude * 1 - Find.WeatherManager.CurWeatherAccuracyMultiplier / 4;
             }
             if (Find.GlowGrid.PsychGlowAt(targetLoc.ToIntVec3()) == PsychGlow.Dark)
             {
-                shiftDistance += actualRange * 0.05f;
+                shiftDistance += shotVec.magnitude * 0.05f;
             }
             //First modification of the loc, a random rectangle
             targetLoc += new Vector3(Rand.Range(-shiftDistance, shiftDistance), 0, Rand.Range(-shiftDistance, shiftDistance));
@@ -89,6 +88,7 @@ namespace Combat_Realism
             //Estimate range on first shot of burst
             if (this.verbProps.burstShotCount == this.burstShotsLeft)
             {
+                float actualRange = Vector3.Distance(targetLoc, sourceLoc);
                 float estimationDeviation = (this.cpCustomGet.scope ? 0.5f : 1f) * ((1 - this.shootingAccuracy) * actualRange);
                 this.estimatedTargetDistance = Mathf.Clamp(Rand.Gaussian(actualRange, estimationDeviation / 3), actualRange - estimationDeviation, actualRange + estimationDeviation);
             }
