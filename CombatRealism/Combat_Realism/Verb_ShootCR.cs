@@ -190,10 +190,11 @@ namespace Combat_Realism
             }
 	       	skewVec += moaVec;
             
-            Log.Message("combined Skew vector: " + skewVec.ToString() + " | recoil: "+recoilVec.ToString()+" ..+skill: "+shooterVec.ToString()+" ..+moa: "+moaVec.ToString());
+            Log.Message("combined Skew vector: " + skewVec.ToString() + " | recoil: "+recoil.ToString()+" ..+recoilVec: "+recoilVec.ToString()+" ..+skill: "+shooterVec.ToString()+" ..+moa: "+moaVec.ToString());
 			
             //Skewing		-		Applied after the leading calculations to not screw them up
-            targetLoc = sourceLoc + (Quaternion.AngleAxis(skewVec.x, Vector3.up) * shotVec).normalized * DistanceTraveled(this.verbProps.projectileDef.projectile.speed, skewVec.y, this.shotHeight);
+            targetLoc = sourceLoc + (shotVec.normalized * DistanceTraveled(this.verbProps.projectileDef.projectile.speed, skewVec.y, this.shotHeight));
+            targetLoc = sourceLoc + (Quaternion.AngleAxis(skewVec.x, Vector3.up) * (targetLoc - sourceLoc));
             
             this.shotAngle = skewVec.y;
             
