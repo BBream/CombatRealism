@@ -247,11 +247,12 @@ namespace Combat_Realism
                         return true;
                     }
                     //Apparently checking for cover
-                    if (this.ticksToImpact < this.StartingTicksToImpact / 2 && height < thing.def.fillPercent)
+                    if (this.ticksToImpact < this.StartingTicksToImpact / 2)
                     {
-                        this.Impact(thing);
-                        Log.Message("Impacting: " + thing.ToString());
-                        return true;
+                    	bool impacted = this.ImpactThroughBodySize(thing, height);
+                    	Log.Message("Impacting: " + thing.ToString() + " " + (impacted ? "FAILED" : "Success"));
+                    	if (impacted)
+                        	return true;
                     }
 
                 }
