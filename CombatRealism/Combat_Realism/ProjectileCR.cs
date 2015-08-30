@@ -225,32 +225,37 @@ namespace Combat_Realism
                 return false;
             }
             List<Thing> list = Find.ThingGrid.ThingsListAt(cell);
-            float height = (list.Count > 0) ? ProjectileHeight(this.shotHeight, this.Distance, this.shotAngle, this.def.projectile.speed) : 0;
-            for (int i = 0; i < list.Count; i++)
+
+            //Check for entries first so we avoid doing costly height calculations
+            if (list.Count > 0)
             {
-                Thing thing = list[i];
-                if (thing.def.Fillage == FillCategory.Full)	//ignore height
+                float height = ProjectileHeight(this.shotHeight, this.Distance, this.shotAngle, this.def.projectile.speed);
+                for (int i = 0; i < list.Count; i++)
                 {
-                    this.Impact(thing);
-                    return true;
-                }
-                if (thing.def.category == ThingCategory.Pawn)
-                {
-                    return ImpactThroughBodySize(thing, height);
-                }
-                //Check for trees		--		HARDCODED RNG IN HERE
-                if (thing.def.category == ThingCategory.Plant && thing.def.altitudeLayer == AltitudeLayer.BuildingTall && Rand.Value < thing.def.fillPercent)
-                {
-                    this.Impact(thing);
-                    return true;
-                }
-                //Apparently checking for cover
-                if (this.ticksToImpact < this.StartingTicksToImpact / 2 && thing.def.fillPercent > 0) //Need to check for fillPercent here or else will be impacting things like motes, etc.
-                {
-                    bool impacted = this.ImpactThroughBodySize(thing, height);
-                    Log.Message("Impacting: " + thing.ToString() + " " + (impacted ? "FAILED" : "Success"));
-                    if (impacted)
+                    Thing thing = list[i];
+                    if (thing.def.Fillage == FillCategory.Full)	//ignore height
+                    {
+                        this.Impact(thing);
                         return true;
+                    }
+                    if (thing.def.category == ThingCategory.Pawn)
+                    {
+                        return ImpactThroughBodySize(thing, height);
+                    }
+                    //Check for trees		--		HARDCODED RNG IN HERE
+                    if (thing.def.category == ThingCategory.Plant && thing.def.altitudeLayer == AltitudeLayer.BuildingTall && Rand.Value < thing.def.fillPercent)
+                    {
+                        this.Impact(thing);
+                        return true;
+                    }
+                    //Checking for cover
+                    if (this.ticksToImpact < this.StartingTicksToImpact / 2 && thing.def.fillPercent > 0) //Need to check for fillPercent here or else will be impacting things like motes, etc.
+                    {
+                        bool impacted = this.ImpactThroughBodySize(thing, height);
+                        Log.Message("Impacting: " + thing.ToString() + " " + (impacted ? "FAILED" : "Success"));
+                        if (impacted)
+                            return true;
+                    }
                 }
             }
             return false;
@@ -279,7 +284,6 @@ namespace Combat_Realism
             		return true;
             	}
             }
-            this.Impact(null);
             return false;
         }
 

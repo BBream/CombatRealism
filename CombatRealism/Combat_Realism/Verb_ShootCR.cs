@@ -65,9 +65,8 @@ namespace Combat_Realism
         		// ----------------------------------- STEP 0: Actual location
         	
             Pawn targetPawn = this.currentTarget.Thing as Pawn;
-            Pawn sourcePawn = this.caster as Pawn;
             Vector3 targetLoc = targetPawn != null ? targetPawn.DrawPos : this.currentTarget.Cell.ToVector3();
-            Vector3 sourceLoc = sourcePawn != null ? sourcePawn.DrawPos : this.caster.Position.ToVector3();
+            Vector3 sourceLoc = this.CasterPawn != null ? this.CasterPawn.DrawPos : this.caster.Position.ToVector3();
             targetLoc.Scale(new Vector3(1, 0, 1));
             sourceLoc.Scale(new Vector3(1, 0, 1));
             
@@ -78,7 +77,7 @@ namespace Combat_Realism
             if (this.cpCustomGet != null)
             {
             	recoil = this.GetRecoilAmount();
-	        	recoil *= (float)(1 - 0.015 * sourcePawn.skills.GetSkill(SkillDefOf.Shooting).level);	//very placeholder
+                recoil *= (float)(1 - 0.015 * this.shootingAccuracy);	//very placeholder
             }
             
             	// ----------------------------------- STEP 1: Estimated location
@@ -128,7 +127,7 @@ namespace Combat_Realism
             //Log.Message("targetLoc after range: " + targetLoc.ToString());
             
             //Lead a moving target
-            if (targetPawn != null && targetPawn.pather.Moving)
+            if (targetPawn != null && targetPawn.pather != null && targetPawn.pather.Moving)
             {
                 float timeToTarget = this.estimatedTargetDistance / this.verbProps.projectileDef.projectile.speed;
                 float leadDistance = targetPawn.GetStatValue(StatDefOf.MoveSpeed, false) * timeToTarget;
@@ -160,7 +159,7 @@ namespace Combat_Realism
 	        		targetableHeight -= cover.def.fillPercent;
 	        	}
 	        	heightDifference += targetableHeight * 0.5f;		//Optimal hit level is halfway
-	        	this.shotHeight = (sourcePawn != null ? sourcePawn.BodySize * 0.75f : (this.caster != null ? this.caster.def.fillPercent : 0));
+                this.shotHeight = (this.CasterPawn != null ? this.CasterPawn.BodySize * 0.75f : (this.caster != null ? this.caster.def.fillPercent : 0));
 	        	heightDifference -= this.shotHeight;		//Assuming pawns shoot at 3/4ths of their body size
 	        skewVec += new Vector2(0, ShotAngle(this.verbProps.projectileDef.projectile.speed, shotVec.magnitude, heightDifference) * (180 / (float)Math.PI));
             
