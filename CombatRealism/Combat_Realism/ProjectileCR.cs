@@ -229,32 +229,28 @@ namespace Combat_Realism
             for (int i = 0; i < list.Count; i++)
             {
                 Thing thing = list[i];
-                if (thing != this.AssignedMissTarget)	//Is this check really necessary
+                if (thing.def.Fillage == FillCategory.Full)	//ignore height
                 {
-                    if (thing.def.Fillage == FillCategory.Full)	//ignore height
-                    {
-                        this.Impact(thing);
+                    this.Impact(thing);
+                    return true;
+                }
+                if (thing.def.category == ThingCategory.Pawn)
+                {
+                    return ImpactThroughBodySize(thing, height);
+                }
+                //Check for trees		--		HARDCODED RNG IN HERE
+                if (thing.def.category == ThingCategory.Plant && thing.def.altitudeLayer == AltitudeLayer.BuildingTall && Rand.Value < thing.def.fillPercent)
+                {
+                    this.Impact(thing);
+                    return true;
+                }
+                //Apparently checking for cover
+                if (this.ticksToImpact < this.StartingTicksToImpact / 2 && thing.def.fillPercent > 0) //Need to check for fillPercent here or else will be impacting things like motes, etc.
+                {
+                    bool impacted = this.ImpactThroughBodySize(thing, height);
+                    Log.Message("Impacting: " + thing.ToString() + " " + (impacted ? "FAILED" : "Success"));
+                    if (impacted)
                         return true;
-                    }
-                    if (thing.def.category == ThingCategory.Pawn)
-                    {
-                    	return ImpactThroughBodySize(thing, height);
-                    }
-                    //Check for trees		--		HARDCODED RNG IN HERE
-                    if (thing.def.category == ThingCategory.Plant && thing.def.altitudeLayer == AltitudeLayer.BuildingTall && Rand.Value < thing.def.fillPercent)
-                    {
-                        this.Impact(thing);
-                        return true;
-                    }
-                    //Apparently checking for cover
-                    if (this.ticksToImpact < this.StartingTicksToImpact / 2)
-                    {
-                    	bool impacted = this.ImpactThroughBodySize(thing, height);
-                    	Log.Message("Impacting: " + thing.ToString() + " " + (impacted ? "FAILED" : "Success"));
-                    	if (impacted)
-                        	return true;
-                    }
-
                 }
             }
             return false;
