@@ -170,8 +170,8 @@ namespace Combat_Realism
         	Rand.Seed = prevSeed;
 	        
 	        int ticks = Find.TickManager.TicksAbs / 60;
-	        float shooterAmplitude = (float)(1 - Math.Sqrt(1.2 - shootingAccuracy)) * (float)Math.Cos(5 * ticks);
-	        Vector2 shooterVec = new Vector2(shooterAmplitude * (float)Math.Sin((ticks) + rangeVariation), 0.5f * shooterAmplitude * (float)Math.Sin((2 * ticks) + rangeVariation));
+	        float shooterAmplitude = (float)(1 - Math.Sqrt(1.2 - shootingAccuracy));
+	        Vector2 shooterVec = new Vector2(shooterAmplitude * (float)Math.Sin(ticks + rangeVariation), 0.5f * shooterAmplitude * (float)Math.Sin((2 * ticks) + rangeVariation));
 		        //sin(2*t)*(cos(5*t)-1)
 		        //sin(2*t)*(cos(5*t)-1)*sin(t)
 	        skewVec += shooterVec;
