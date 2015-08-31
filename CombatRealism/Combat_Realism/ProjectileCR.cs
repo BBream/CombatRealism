@@ -1,9 +1,11 @@
-﻿using RimWorld;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using UnityEngine;
-using Verse.Sound;
+using System.Linq;
+using System.Text;
 using Verse;
+using Verse.Sound;
+using RimWorld;
+using UnityEngine;
 
 namespace Combat_Realism
 {
@@ -183,16 +185,16 @@ namespace Combat_Realism
             }
             if (this.origin.ToIntVec3().DistanceToSquared(newPos) > 16f)
             {
-                Vector3 vector = lastExactPos;
-                Vector3 v = newExactPos - lastExactPos;
-                Vector3 b = v.normalized * 0.2f;
-                int num = (int)(v.MagnitudeHorizontal() / 0.2f);
+                Vector3 currentExactPos = lastExactPos;
+                Vector3 flightVec = newExactPos - lastExactPos;
+                Vector3 sectionVec = flightVec.normalized * 0.2f;
+                int numSections = (int)(flightVec.MagnitudeHorizontal() / 0.2f);
                 ProjectileCR.checkedCells.Clear();
-                int num2 = 0;
+                int currentSection = 0;
                 while (true)
                 {
-                    vector += b;
-                    IntVec3 intVec3 = vector.ToIntVec3();
+                    currentExactPos += sectionVec;
+                    IntVec3 intVec3 = currentExactPos.ToIntVec3();
                     if (!ProjectileCR.checkedCells.Contains(intVec3))
                     {
                         if (this.CheckForFreeIntercept(intVec3))
@@ -201,8 +203,8 @@ namespace Combat_Realism
                         }
                         ProjectileCR.checkedCells.Add(intVec3);
                     }
-                    num2++;
-                    if (num2 > num)
+                    currentSection++;
+                    if (currentSection > numSections)
                     {
                         return false;
                     }
@@ -224,23 +226,36 @@ namespace Combat_Realism
             {
                 return false;
             }
-            List<Thing> list = Find.ThingGrid.ThingsListAt(cell);
+            List<Thing> mainThingList = Find.ThingGrid.ThingsListAt(cell);
+
+            //Find pawns in adjacent cells and append them to main list
+            List<IntVec3> adjList = GenAdj.CellsAdjacentCardinal(cell, this.Rotation, new IntVec2(0,1)).ToList<IntVec3>();
+            for (int i = 0; i < adjList.Count; i++)
+            {
+                if (adjList[i].InBounds() && !adjList[i].Equals(cell))
+                {
+                    List<Thing> thingList = Find.ThingGrid.ThingsListAt(adjList[i]);
+                    for (int j = 0; j < thingList.Count; j++)
+                    {
+                        if (thingList[j].def.category == ThingCategory.Pawn)
+                        {
+                            mainThingList.Add(thingList[j]);
+                        }
+                    }
+                }
+            }
 
             //Check for entries first so we avoid doing costly height calculations
-            if (list.Count > 0)
+            if (mainThingList.Count > 0)
             {
                 float height = ProjectileHeight(this.shotHeight, this.Distance, this.shotAngle, this.def.projectile.speed);
-                for (int i = 0; i < list.Count; i++)
+                for (int i = 0; i < mainThingList.Count; i++)
                 {
-                    Thing thing = list[i];
+                    Thing thing = mainThingList[i];
                     if (thing.def.Fillage == FillCategory.Full)	//ignore height
                     {
                         this.Impact(thing);
                         return true;
-                    }
-                    if (thing.def.category == ThingCategory.Pawn)
-                    {
-                        return ImpactThroughBodySize(thing, height);
                     }
                     //Check for trees		--		HARDCODED RNG IN HERE
                     if (thing.def.category == ThingCategory.Plant && thing.def.altitudeLayer == AltitudeLayer.BuildingTall && Rand.Value < thing.def.fillPercent)
@@ -248,13 +263,12 @@ namespace Combat_Realism
                         this.Impact(thing);
                         return true;
                     }
-                    //Checking for cover
-                    if (this.ticksToImpact < this.StartingTicksToImpact / 2 && thing.def.fillPercent > 0) //Need to check for fillPercent here or else will be impacting things like motes, etc.
+                    //Checking for pawns/cover
+                    if (thing.def.category == ThingCategory.Pawn || (this.ticksToImpact < this.StartingTicksToImpact / 2 && thing.def.fillPercent > 0)) //Need to check for fillPercent here or else will be impacting things like motes, etc.
                     {
                         bool impacted = this.ImpactThroughBodySize(thing, height);
                         Log.Message("Impacting: " + thing.ToString() + " " + (impacted ? "FAILED" : "Success"));
-                        if (impacted)
-                            return true;
+                        return impacted;
                     }
                 }
             }
@@ -269,12 +283,22 @@ namespace Combat_Realism
             Pawn pawn = thing as Pawn;
             if (pawn != null)
             {
-            	float downedSize = (float)(pawn.BodySize > 1 ? pawn.BodySize - (1 - this.downedHitFactor) : this.downedHitFactor * pawn.BodySize);
-            	if (height < (pawn.Downed ? downedSize : pawn.BodySize))
-            	{
-            		this.Impact(thing);
-            		return true;
-            	}
+                //Check horizontal distance
+                Vector3 dest = this.destination;
+                Vector3 orig = this.origin;
+                Vector3 pawnPos = pawn.DrawPos;
+                float closestDistToPawn = Math.Abs((dest.z - orig.z) * pawnPos.x - (dest.x - orig.x) * pawnPos.z + dest.x * orig.z - dest.z * orig.x)
+                    / (float)Math.Sqrt((dest.z - orig.z) * (dest.z - orig.z) + (dest.x - orig.x) * (dest.x - orig.x));
+                if (closestDistToPawn <= pawn.BodySize / (pawn.RaceProps.body.defName == "Human" || pawn.RaceProps.body.defName == "Scyther" ? 4 : 2))
+                {
+                    //Check vertical distance
+                    float downedSize = (float)(pawn.BodySize > 1 ? pawn.BodySize - (1 - this.downedHitFactor) : this.downedHitFactor * pawn.BodySize);
+                    if (height < (pawn.Downed ? downedSize : pawn.BodySize))
+                    {
+                        this.Impact(thing);
+                        return true;
+                    }
+                }
             }
             if (thing.def.fillPercent > 0 || thing.def.Fillage == FillCategory.Full)
             {
