@@ -9,7 +9,6 @@ namespace Combat_Realism
 	{
         private float estimatedTargetDistance;  //Stores estimates target distance for each burst, so each burst shot uses the same
 		private const float accuracyExponent = -2f;
-		private Vector2 recoilMagnitude = new Vector2(0.6f, 0.5f);
 		private float shotAngle;
 		private float shotHeight;
         
@@ -72,13 +71,15 @@ namespace Combat_Realism
             
             Log.Message("targetLoc after initialize: " + targetLoc.ToString());
             
+            /*
             // Calculating recoil before use
             Vector2 recoil = new Vector2(0, 0);
             if (this.cpCustomGet != null)
             {
-            	recoil = this.GetRecoilAmount();
+            	recoil = this.GetRecoilVec();
                 recoil *= (float)(1 - 0.015 * this.shootingAccuracy);	//very placeholder
             }
+             */
             
             	// ----------------------------------- STEP 1: Estimated location
             
@@ -147,8 +148,7 @@ namespace Combat_Realism
             
             Vector2 skewVec = new Vector2(0, 0);
             
-            Vector2 recoilVec = new Vector2(Rand.Range(-Math.Abs(recoil.x), Math.Abs(recoil.x)), Rand.Range(-Math.Abs(recoil.y), Math.Abs(recoil.y)));
-            skewVec += (recoil + Vector2.Scale(recoilMagnitude, recoilVec));
+            skewVec += this.GetRecoilVec();
             
             	//Height difference calculations for ShotAngle
             float heightDifference = 0;
@@ -179,16 +179,16 @@ namespace Combat_Realism
             	// ----------------------------------- STEP 4: Mechanical variation
             	
             //Get shotvariation
-            Vector2 moaVec = new Vector2(0, 0);
-            if(this.cpCustomGet.moaValue != 0)
+            Vector2 shotVarVec = new Vector2(0, 0);
+            if(this.cpCustomGet.shotVariation != 0)
             {
-            	moaVec.Set(Rand.Range(-1, 1), Rand.Range(-1, 1));
-            	float moaAmplitude = moaVec.magnitude * this.cpCustomGet.moaValue * (1.5f - this.verbProps.accuracyShort);
-	            moaVec = moaVec.normalized * moaAmplitude * this.cpCustomGet.moaValue;
+            	shotVarVec.Set(Rand.Range(-1, 1), Rand.Range(-1, 1));
+            	float shotVarAmplitude = shotVarVec.magnitude * this.cpCustomGet.shotVariation * (1.5f - this.verbProps.accuracyShort);
+	            shotVarVec = shotVarVec.normalized * shotVarAmplitude * this.cpCustomGet.shotVariation;
             }
-	       	skewVec += moaVec;
+	       	skewVec += shotVarVec;
             
-            Log.Message("combined Skew vector: " + skewVec.ToString() + " | recoil: "+recoil.ToString()+" ..+recoilVec: "+recoilVec.ToString()+" ..+skill: "+shooterVec.ToString()+" ..+moa: "+moaVec.ToString());
+            Log.Message("combined Skew vector: " + skewVec.ToString() + " ..+recoilVec: "+this.GetRecoilVec().ToString()+" ..+skill: "+shooterVec.ToString()+" ..+moa: "+shotVarVec.ToString());
 			
             //Skewing		-		Applied after the leading calculations to not screw them up
             float distanceTraveled = DistanceTraveled(this.verbProps.projectileDef.projectile.speed, (float)(skewVec.y * (Math.PI / 180)), this.shotHeight);
@@ -208,24 +208,30 @@ namespace Combat_Realism
         /// <summary>
         /// Calculates the amount of recoil at a given point in a burst
         /// </summary>
-        private Vector2 GetRecoilAmount()
+        private Vector2 GetRecoilVec()
         {
-        	Vector2 recoilAmount = new Vector2(0, 0);
-        	Vector2 recoilOffset = this.cpCustomGet.recoilOffset;
-			int currentBurst = (this.verbProps.burstShotCount - this.burstShotsLeft) <= 11 ? (this.verbProps.burstShotCount - this.burstShotsLeft) : 11;
-			if (!(recoilOffset.x == 0 && recoilOffset.y == 0))
+        	Vector2 recoilVec = new Vector2(0, 0);
+            if (this.cpCustomGet != null)
             {
-            	recoilAmount += this.cpCustomGet.recoilOffset * (2 * (float)Math.Sqrt(0.1 * currentBurst)) * (this.CasterIsPawn ? 1 : 0.5f);
-                /*if (this.CasterIsPawn)
+                Vector2 recoilOffsetX = this.cpCustomGet.recoilOffsetX;
+                Vector2 recoilOffsetY = this.cpCustomGet.recoilOffsetY;
+                if (!(recoilOffsetX.Equals(Vector2.zero) && recoilOffsetY.Equals(Vector2.zero)))
                 {
-                    recoilAmount += offset * (float)Math.Pow(currentBurst + 3, 1 - this.CasterPawn.GetStatValue(StatDefOf.ShootingAccuracy));
+                    int currentBurst = Math.Min(this.verbProps.burstShotCount - this.burstShotsLeft, 10);
+                    recoilVec.Set(Rand.Range(recoilOffsetX.x, recoilOffsetX.y), Rand.Range(recoilOffsetY.x, recoilOffsetY.y));
+                    recoilVec *= (float)Math.Sqrt((1 - shootingAccuracy) * currentBurst);
+
+                    /*if (this.CasterIsPawn)
+                    {
+                        recoilAmount += offset * (float)Math.Pow(currentBurst + 3, 1 - this.CasterPawn.GetStatValue(StatDefOf.ShootingAccuracy));
+                    }
+                    else
+                    {
+                        recoilAmount += offset * (float)Math.Pow(currentBurst + 3, 0.02f);
+                    }*/
                 }
-                else
-                {
-                    recoilAmount += offset * (float)Math.Pow(currentBurst + 3, 0.02f);
-                }*/
             }
-        	return recoilAmount;
+        	return recoilVec;
         }
         
         /// <summary>

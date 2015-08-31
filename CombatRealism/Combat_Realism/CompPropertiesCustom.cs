@@ -11,10 +11,9 @@ namespace Combat_Realism
 	/// </summary>
 	public class CompPropertiesCustom : CompProperties
 	{
-		public float moaValue = 0;
-		public float recoil = 0;
-		public Vector2 recoilOffset = new Vector2(0, 0);
-		public bool scope = false;
+		public float shotVariation = 0;
+        public Vector2 recoilOffsetX = new Vector2(0, 0);
+        public Vector2 recoilOffsetY = new Vector2(0, 0);
 		
 		public CompPropertiesCustom() : base()
 		{

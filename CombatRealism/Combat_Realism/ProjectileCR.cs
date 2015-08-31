@@ -229,7 +229,20 @@ namespace Combat_Realism
             List<Thing> mainThingList = Find.ThingGrid.ThingsListAt(cell);
 
             //Find pawns in adjacent cells and append them to main list
-            List<IntVec3> adjList = GenAdj.CellsAdjacentCardinal(cell, this.Rotation, new IntVec2(0,1)).ToList<IntVec3>();
+            List<IntVec3> adjList = new List<IntVec3>();
+            Vector3 shotVec = (this.destination - this.origin).normalized;
+
+            //Check if bullet is going north-south or west-east
+            if (Math.Abs(shotVec.x) < Math.Abs(shotVec.z))
+            {
+                adjList = GenAdj.CellsAdjacentCardinal(cell, this.Rotation, new IntVec2(0,1)).ToList<IntVec3>();
+            }
+            else
+            {
+                adjList = GenAdj.CellsAdjacentCardinal(cell, this.Rotation, new IntVec2(1, 0)).ToList<IntVec3>();
+            }
+
+            //Iterate through adjacent cells and find all the pawns
             for (int i = 0; i < adjList.Count; i++)
             {
                 if (adjList[i].InBounds() && !adjList[i].Equals(cell))
@@ -237,9 +250,10 @@ namespace Combat_Realism
                     List<Thing> thingList = Find.ThingGrid.ThingsListAt(adjList[i]);
                     for (int j = 0; j < thingList.Count; j++)
                     {
-                        if (thingList[j].def.category == ThingCategory.Pawn)
+                        if (thingList[j].def.category == ThingCategory.Pawn && !mainThingList.Contains(thingList[j]))
                         {
                             mainThingList.Add(thingList[j]);
+                            Log.Message("Added Thing: " + thingList[j].ToString());
                         }
                     }
                 }
@@ -267,7 +281,7 @@ namespace Combat_Realism
                     if (thing.def.category == ThingCategory.Pawn || (this.ticksToImpact < this.StartingTicksToImpact / 2 && thing.def.fillPercent > 0)) //Need to check for fillPercent here or else will be impacting things like motes, etc.
                     {
                         bool impacted = this.ImpactThroughBodySize(thing, height);
-                        Log.Message("Impacting: " + thing.ToString() + " " + (impacted ? "FAILED" : "Success"));
+                        Log.Message("Impacting: " + thing.ToString() + " " + (impacted ? "Success" : "FAILED"));
                         return impacted;
                     }
                 }
