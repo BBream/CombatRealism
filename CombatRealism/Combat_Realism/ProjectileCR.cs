@@ -253,7 +253,6 @@ namespace Combat_Realism
                         if (thingList[j].def.category == ThingCategory.Pawn && !mainThingList.Contains(thingList[j]))
                         {
                             mainThingList.Add(thingList[j]);
-                            Log.Message("Added Thing: " + thingList[j].ToString());
                         }
                     }
                 }
@@ -281,7 +280,6 @@ namespace Combat_Realism
                     if (thing.def.category == ThingCategory.Pawn || (this.ticksToImpact < this.StartingTicksToImpact / 2 && thing.def.fillPercent > 0)) //Need to check for fillPercent here or else will be impacting things like motes, etc.
                     {
                         bool impacted = this.ImpactThroughBodySize(thing, height);
-                        Log.Message("Impacting: " + thing.ToString() + " " + (impacted ? "Success" : "FAILED"));
                         return impacted;
                     }
                 }
