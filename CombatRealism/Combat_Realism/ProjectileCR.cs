@@ -149,7 +149,9 @@ namespace Combat_Realism
             }
             //Checking if a new destination was set
             if (this.destination == null)
+            {
                 this.destination = targ.Cell.ToVector3Shifted() + new Vector3(Rand.Range(-0.3f, 0.3f), 0f, Rand.Range(-0.3f, 0.3f));
+            }
 
             this.ticksToImpact = this.StartingTicksToImpact;
             if (!this.def.projectile.soundAmbient.NullOrUndefined())
@@ -183,8 +185,10 @@ namespace Combat_Realism
             {
                 return this.CheckForFreeIntercept(newPos);
             }
-            if (this.origin.ToIntVec3().DistanceToSquared(newPos) > 16f)
+            float distToTarget = this.assignedTarget != null ? (this.assignedTarget.DrawPos - this.origin).MagnitudeHorizontal() : (this.destination - this.origin).MagnitudeHorizontal();
+            if (distToTarget <= 1f ? this.origin.ToIntVec3().DistanceToSquared(newPos) > 1f : this.origin.ToIntVec3().DistanceToSquared(newPos) > Mathf.Min(12f, distToTarget / 2))
             {
+
                 Vector3 currentExactPos = lastExactPos;
                 Vector3 flightVec = newExactPos - lastExactPos;
                 Vector3 sectionVec = flightVec.normalized * 0.2f;
@@ -221,8 +225,9 @@ namespace Combat_Realism
         //Added collision detection for cover objects, changed pawn collateral chances
         private bool CheckForFreeIntercept(IntVec3 cell)
         {
-            float distFromOrigin = (cell.ToVector3Shifted() - this.origin).MagnitudeHorizontalSquared();
-            if (distFromOrigin < 16f)
+            float distFromOrigin = (cell.ToVector3Shifted() - this.origin).MagnitudeHorizontal();
+            float distToTarget = this.assignedTarget != null ? (this.assignedTarget.DrawPos - this.origin).MagnitudeHorizontal() : (this.destination - this.origin).MagnitudeHorizontal();
+            if (distToTarget <= 1f ? distFromOrigin < 1f : distFromOrigin < Mathf.Min(12f, distToTarget / 2))
             {
                 return false;
             }
@@ -271,13 +276,13 @@ namespace Combat_Realism
                         return true;
                     }
                     //Check for trees		--		HARDCODED RNG IN HERE
-                    if (thing.def.category == ThingCategory.Plant && thing.def.altitudeLayer == AltitudeLayer.BuildingTall && Rand.Value < thing.def.fillPercent)
+                    if (thing.def.category == ThingCategory.Plant && thing.def.altitudeLayer == AltitudeLayer.BuildingTall && Rand.Value < thing.def.fillPercent * Mathf.Clamp(distFromOrigin / 40, 0f, 1f))
                     {
                         this.Impact(thing);
                         return true;
                     }
                     //Checking for pawns/cover
-                    if (thing.def.category == ThingCategory.Pawn || (this.ticksToImpact < this.StartingTicksToImpact / 2 && thing.def.fillPercent > 0)) //Need to check for fillPercent here or else will be impacting things like motes, etc.
+                    else if (thing.def.category == ThingCategory.Pawn || (this.ticksToImpact < this.StartingTicksToImpact / 2 && thing.def.fillPercent > 0)) //Need to check for fillPercent here or else will be impacting things like motes, etc.
                     {
                         bool impacted = this.ImpactThroughBodySize(thing, height);
                         return impacted;
@@ -304,8 +309,8 @@ namespace Combat_Realism
                 if (closestDistToPawn <= pawn.BodySize / (pawn.RaceProps.body.defName == "Human" || pawn.RaceProps.body.defName == "Scyther" ? 4 : 2))
                 {
                     //Check vertical distance
-                    float downedSize = (float)(pawn.BodySize > 1 ? pawn.BodySize - (1 - this.downedHitFactor) : this.downedHitFactor * pawn.BodySize);
-                    if (height < (pawn.Downed ? downedSize : pawn.BodySize))
+                    float pawnHeight = Utility.GetCollisionHeight(pawn);
+                    if (height < pawnHeight)
                     {
                         this.Impact(thing);
                         return true;

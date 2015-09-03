@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using RimWorld;
@@ -69,5 +68,43 @@ namespace Combat_Realism
             return determineImpactPosition(originalPosition, originalTarget, 0);
         }
 
+        /// <summary>
+        /// Generates a random Vector2 in a circle with given radius
+        /// </summary>
+        public static Vector2 GenRandInCircle(float radius)
+        {
+            //Fancy math to get random point in circle
+            float a = 1 - Random.Range(0f, 1f);
+            float b = 1 - Random.Range(0f, 1f);
+            if (b < a)
+            {
+                float c = a;
+                a = b;
+                b = c;
+            }
+            return new Vector2((float)(b * radius * Mathf.Cos(2 * Mathf.PI * a / b)), (float)(b * radius * Mathf.Sin(2 * Mathf.PI * a / b)));
+        }
+
+        /// <summary>
+        /// Returns the collision height of a Thing
+        /// </summary>
+        public static float GetCollisionHeight(Thing thing)
+        {
+            if (thing == null)
+            {
+                return 0;
+            }
+            Pawn pawn = thing as Pawn;
+            if (pawn != null)
+            {
+                float collisionHeight = pawn.BodySize;
+                if (pawn.Downed)
+                {
+                    collisionHeight = pawn.BodySize > 1 ? pawn.BodySize - 0.8f : 0.8f * pawn.BodySize;
+                }
+                return collisionHeight;
+            }
+            return thing.def.fillPercent;
+        }
     }
 }

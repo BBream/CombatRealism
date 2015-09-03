@@ -3,6 +3,8 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Verse;
+using Verse.AI;
+
 namespace Combat_Realism
 {
 	public class Verb_ShootCR : Verse.Verb_Shoot
@@ -40,15 +42,28 @@ namespace Combat_Realism
 				return 0.98f;
 			}
 		}
+
+        private float aimingAccuracy
+        {
+            get
+            {
+                Pawn pawn = this.caster as Pawn;
+                if (pawn != null)
+                {
+                    return (float)Math.Pow(pawn.GetStatValue(StatDef.Named("AimingAccuracy")), 2);
+                }
+                return 0.98f;
+            }
+        }
 		
-		private float ShotAngle(float velocity, float range, float heightDifference)
+		private float GetShotAngle(float velocity, float range, float heightDifference)
 		{
 			float gravity = 9.8f;
 			float angle = (float)Math.Atan((Math.Pow(velocity, 2) - Math.Sqrt(Math.Pow(velocity, 4) - gravity * (gravity * Math.Pow(range, 2) + 2 * heightDifference * Math.Pow(velocity, 2)))) / (gravity * range));
 			return angle;
 		}
 		
-		private float DistanceTraveled(float velocity, float angle, float heightDifference)
+		private float GetDistanceTraveled(float velocity, float angle, float heightDifference)
 		{
 			float gravity = 9.8f;
 			float distance = (float)((velocity * Math.Cos(angle)) / gravity) * (float)(velocity * Math.Sin(angle) + Math.Sqrt(Math.Pow(velocity * Math.Sin(angle), 2) + 2 * gravity * heightDifference));
@@ -58,32 +73,18 @@ namespace Combat_Realism
         /// <summary>
         /// Shifts the original target position in accordance with target leading, range estimation and weather/lighting effects
         /// </summary>
-        private Vector3 ShiftTarget()
+        protected virtual Vector3 ShiftTarget()
         {
         		// ----------------------------------- STEP 0: Actual location
         	
             Pawn targetPawn = this.currentTarget.Thing as Pawn;
-            Vector3 targetLoc = targetPawn != null ? targetPawn.DrawPos : this.currentTarget.Cell.ToVector3();
-            Vector3 sourceLoc = this.CasterPawn != null ? this.CasterPawn.DrawPos : this.caster.Position.ToVector3();
+            Vector3 targetLoc = targetPawn != null ? targetPawn.DrawPos : this.currentTarget.Cell.ToVector3Shifted();
+            Vector3 sourceLoc = this.CasterPawn != null ? this.CasterPawn.DrawPos : this.caster.Position.ToVector3Shifted();
             targetLoc.Scale(new Vector3(1, 0, 1));
             sourceLoc.Scale(new Vector3(1, 0, 1));
-            
-            /*
-            // Calculating recoil before use
-            Vector2 recoil = new Vector2(0, 0);
-            if (this.cpCustomGet != null)
-            {
-            	recoil = this.GetRecoilVec();
-                recoil *= (float)(1 - 0.015 * this.shootingAccuracy);	//very placeholder
-            }
-             */
-            
             	// ----------------------------------- STEP 1: Estimated location, target cover check
-            
-            Vector3 shotVec = targetLoc - sourceLoc;    //Assigned for use in Estimated Location
 
-            //Check if target has cover before messing around with targetLoc
-            Thing cover = GridsUtility.GetCover((targetLoc - shotVec.normalized).ToIntVec3());
+            Vector3 shotVec = targetLoc - sourceLoc;    //Assigned for use in Estimated Location
             
             //Shift for lighting
             float shiftDistance = shotVec.magnitude * Mathf.Lerp(0.05f, 0f, Find.GlowGrid.GameGlowAt(targetLoc.ToIntVec3()));
@@ -95,74 +96,70 @@ namespace Combat_Realism
             }
             
             //First modification of the loc, a random rectangle
+            shiftDistance *= 1.5f - this.aimingAccuracy;
+            Vector3 newTargetLoc = targetLoc;
             if (shiftDistance > 0)
             {
-                targetLoc += new Vector3(Rand.Range(-shiftDistance, shiftDistance), 0, Rand.Range(-shiftDistance, shiftDistance));
+                newTargetLoc += new Vector3(UnityEngine.Random.Range(-shiftDistance, shiftDistance), 0, UnityEngine.Random.Range(-shiftDistance, shiftDistance));
             }
 			
             	// ----------------------------------- STEP 2: Estimated shot to hit location
             
-            shotVec = targetLoc - sourceLoc;	//Updated for the estimation to hit Estimated Location 
+            shotVec = newTargetLoc - sourceLoc;	//Updated for the estimation to hit Estimated Location 
             
             //Estimate range on first shot of burst
             if (this.verbProps.burstShotCount == this.burstShotsLeft)
             {
-                float actualRange = Vector3.Distance(targetLoc, sourceLoc);
-                float estimationDeviation = ((1 - this.shootingAccuracy) * actualRange) * (1.5f - this.verbProps.accuracyLong);
+                float actualRange = Vector3.Distance(newTargetLoc, sourceLoc);
+                float estimationDeviation = ((1 - this.aimingAccuracy) * actualRange) * (2 - this.ownerEquipment.GetStatValue(StatDefOf.AccuracyLong) * 2);
                 this.estimatedTargetDistance = Mathf.Clamp(Rand.Gaussian(actualRange, estimationDeviation / 3), actualRange - estimationDeviation, actualRange + estimationDeviation);
             }
-            
-            /*
-            float estimationDeviation = (this.cpCustomGet.scope ? 0.5f : 1f) * (float)(Math.Pow(this.actualRange, 2) / (50 * 100)) * (float)Math.Pow((double)this.shootingAccuracy, this.accuracyExponent);
-            this.rangeEstimate = Mathf.Clamp(Rand.Gaussian(this.actualRange, estimationDeviation), this.actualRange - (3 * estimationDeviation), this.actualRange + (3 * estimationDeviation));
-            */
-            
-            targetLoc = sourceLoc + shotVec.normalized * this.estimatedTargetDistance;
+
+            newTargetLoc = sourceLoc + shotVec.normalized * this.estimatedTargetDistance;
             
             //Lead a moving target
             if (targetPawn != null && targetPawn.pather != null && targetPawn.pather.Moving)
             {
+                //Calculate current movement speed
+                float targetSpeed = GetMoveSpeed(targetPawn);
                 float timeToTarget = this.estimatedTargetDistance / this.verbProps.projectileDef.projectile.speed;
-                float leadDistance = targetPawn.GetStatValue(StatDefOf.MoveSpeed, false) * timeToTarget;
+                float leadDistance = targetSpeed * timeToTarget;
                 Vector3 moveVec = targetPawn.pather.nextCell.ToVector3() - Vector3.Scale(targetPawn.DrawPos, new Vector3(1, 0, 1));
 
-                float leadVariation = (1 - shootingAccuracy) * (1.5f - this.verbProps.accuracyMedium);
+                float leadVariation = (1 - aimingAccuracy) * (2 - this.ownerEquipment.GetStatValue(StatDefOf.AccuracyMedium) * 2);
 
-                //targetLoc += moveVec * Rand.Gaussian(leadDistance, leadDistance * leadVariation);		GAUSSIAN removed for now
-                targetLoc += moveVec * (leadDistance + Rand.Range(-leadVariation, leadVariation));
+                newTargetLoc += moveVec * (leadDistance + UnityEngine.Random.Range(-leadVariation, leadVariation));
             }
             
             	// ----------------------------------- STEP 3: Recoil, Skewing, Skill checks, Cover calculations
             
-            shotVec = targetLoc - sourceLoc;	//Reassigned for further calculations
+            shotVec = newTargetLoc - sourceLoc;	//Reassigned for further calculations
             
             Vector2 skewVec = new Vector2(0, 0);
             
             skewVec += this.GetRecoilVec();
             
-            	//Height difference calculations for ShotAngle
+            //Height difference calculations for ShotAngle
             float heightDifference = 0;
-            float targetableHeight = (targetPawn != null ? targetPawn.BodySize : (this.currentTarget.Thing != null ? this.currentTarget.Thing.def.fillPercent : 0));
-	        if (cover != null)
+            float targetableHeight = Utility.GetCollisionHeight(this.currentTarget.Thing);
+            Thing cover;
+	        if (this.GetCoverBetween(sourceLoc, targetLoc, out cover))
                 {
-	        		targetableHeight += cover.def.fillPercent;
+                    targetableHeight += cover.def.fillPercent;
                 }
-	        heightDifference += targetableHeight * 0.5f;		//Optimal hit level is halfway
+            heightDifference += targetableHeight * 0.5f;		//Optimal hit level is halfway
             this.shotHeight = (this.CasterPawn != null ? this.CasterPawn.BodySize * 0.75f : (this.caster != null ? this.caster.def.fillPercent : 0));
-	        heightDifference -= this.shotHeight;		//Assuming pawns shoot at 3/4ths of their body size
-	        skewVec += new Vector2(0, ShotAngle(this.verbProps.projectileDef.projectile.speed, shotVec.magnitude, heightDifference) * (180 / (float)Math.PI));
+            heightDifference -= this.shotHeight;		//Assuming pawns shoot at 3/4ths of their body size
+	        skewVec += new Vector2(0, GetShotAngle(this.verbProps.projectileDef.projectile.speed, shotVec.magnitude, heightDifference) * (180 / (float)Math.PI));
             
-           		//Get shootervariation
-        	int prevSeed = Rand.Seed;
-	        	Rand.Seed = this.caster.thingIDNumber;
-	        	float rangeVariation = Rand.Range(0, 2);
-        	Rand.Seed = prevSeed;
-	        
+           	//Get shootervariation
 	        int ticks = Find.TickManager.TicksAbs;
-            float shooterAmplitude = 0;  // 2.5f - shootingAccuracy;
+            float shooterAmplitude = 2.5f - shootingAccuracy;
+            if (this.cpCustomGet != null)
+            {
+                shooterAmplitude *= cpCustomGet.shooterVariation;
+            }
 	        Vector2 shooterVec = new Vector2(shooterAmplitude * (float)Math.Sin(ticks * 2.2), 0.04f * shooterAmplitude * (float)Math.Sin(ticks * 1.65));
-		        //sin(2*t)*(cos(5*t)-1)
-		        //sin(2*t)*(cos(5*t)-1)*sin(t)
 	        skewVec += shooterVec;
             
             	// ----------------------------------- STEP 4: Mechanical variation
@@ -171,35 +168,21 @@ namespace Combat_Realism
             Vector2 shotVarVec = new Vector2(0, 0);
             if(this.cpCustomGet.shotVariation != 0)
             {
-                float shotVariation = this.cpCustomGet.shotVariation * (1.5f - this.verbProps.accuracyShort);
-
-                //Placeholder algorithm because the other is giving NaN
-                shotVarVec = new Vector2(1, 1).RotatedBy(Rand.Range(0, 360)) * Rand.Range(0, shotVariation);
-
-                /*
-                //Fancy math to get random point in circle
-                float a = Rand.Range(0, 1);
-                float b = Rand.Range(0, 1);
-                if (b < a)
-                {
-                    float c = a;
-                    a = b;
-                    b = c;
-                }
-                shotVarVec.Set((float)(b * shotVariation * Math.Cos(2 * Math.PI * a / b)), (float)(b * shotVariation * Math.Sin(2 * Math.PI * a / b)));
-                 */
+                float shotVariation = this.cpCustomGet.shotVariation * (2f - this.ownerEquipment.GetStatValue(StatDefOf.AccuracyTouch) * 2);
+                shotVarVec = Utility.GenRandInCircle(shotVariation);
+                shotVarVec.x *= 3;
             }
-	       	skewVec += shotVarVec;
+            skewVec += shotVarVec;
 			
             //Skewing		-		Applied after the leading calculations to not screw them up
-            float distanceTraveled = DistanceTraveled(this.verbProps.projectileDef.projectile.speed, (float)(skewVec.y * (Math.PI / 180)), this.shotHeight);
-            targetLoc = sourceLoc + ((targetLoc - sourceLoc).normalized * distanceTraveled);
-            targetLoc = sourceLoc + (Quaternion.AngleAxis(skewVec.x, Vector3.up) * (targetLoc - sourceLoc));
+            float distanceTraveled = GetDistanceTraveled(this.verbProps.projectileDef.projectile.speed, (float)(skewVec.y * (Math.PI / 180)), this.shotHeight);
+            newTargetLoc = sourceLoc + ((newTargetLoc - sourceLoc).normalized * distanceTraveled);
+            newTargetLoc = sourceLoc + (Quaternion.AngleAxis(skewVec.x, Vector3.up) * (newTargetLoc - sourceLoc));
             
             this.shotAngle = (float)(skewVec.y * (Math.PI / 180));
             
             
-            return targetLoc;
+            return newTargetLoc;
         }
         
         /// <summary>
@@ -215,30 +198,121 @@ namespace Combat_Realism
                 if (!(recoilOffsetX.Equals(Vector2.zero) && recoilOffsetY.Equals(Vector2.zero)))
                 {
                     int currentBurst = Math.Min(this.verbProps.burstShotCount - this.burstShotsLeft, 20);
-                    recoilVec.Set(Rand.Range(recoilOffsetX.x, recoilOffsetX.y), Rand.Range(recoilOffsetY.x, recoilOffsetY.y));
+                    recoilVec.Set(UnityEngine.Random.Range(recoilOffsetX.x, recoilOffsetX.y), UnityEngine.Random.Range(recoilOffsetY.x, recoilOffsetY.y));
                     recoilVec *= (float)Math.Sqrt((1 - shootingAccuracy) * currentBurst);
-
-                    /*if (this.CasterIsPawn)
-                    {
-                        recoilAmount += offset * (float)Math.Pow(currentBurst + 3, 1 - this.CasterPawn.GetStatValue(StatDefOf.ShootingAccuracy));
-                    }
-                    else
-                    {
-                        recoilAmount += offset * (float)Math.Pow(currentBurst + 3, 0.02f);
-                    }*/
                 }
             }
         	return recoilVec;
+        }
+
+        /// <summary>
+        /// Calculates the actual current movement speed of a pawn
+        /// </summary>
+        private float GetMoveSpeed(Pawn pawn)
+        {
+            float movePerTick = 60 / pawn.GetStatValue(StatDefOf.MoveSpeed, false);    //Movement per tick
+            movePerTick += PathGrid.CalculatedCostAt(pawn.Position, false);
+            Building edifice = pawn.Position.GetEdifice();
+            if (edifice != null)
+            {
+                movePerTick += (int)edifice.PathWalkCostFor(pawn);
+            }
+
+            //Case switch to handle walking, jogging, etc.
+            switch (pawn.CurJob.locomotionUrgency)
+            {
+                case LocomotionUrgency.Amble:
+                    movePerTick *= 3;
+                    if (movePerTick < 60)
+                    {
+                        movePerTick = 60;
+                    }
+                    break;
+                case LocomotionUrgency.Walk:
+                    movePerTick *= 2;
+                    if (movePerTick < 50)
+                    {
+                        movePerTick = 50;
+                    }
+                    break;
+                case LocomotionUrgency.Jog:
+                    break;
+                case LocomotionUrgency.Sprint:
+                    movePerTick = Mathf.RoundToInt(movePerTick * 0.75f);
+                    break;
+            }
+            return 60 / movePerTick;
+        }
+
+        /// <summary>
+        /// Checks for cover along the flight path of the bullet, doesn't check for walls, only intended for cover with partial fillPercent
+        /// </summary>
+        private bool GetCoverBetween(Vector3 sourceLoc, Vector3 targetLoc, out Thing cover)
+        {
+            sourceLoc.Scale(new Vector3(1, 0, 1));
+            targetLoc.Scale(new Vector3(1, 0, 1));
+            Thing targetThing = GridsUtility.GetEdifice(targetLoc.ToIntVec3());
+            cover = GridsUtility.GetCover((targetLoc - (targetLoc - sourceLoc).normalized).ToIntVec3());
+            if (!this.verbProps.projectileDef.projectile.flyOverhead 
+                && cover != null 
+                && !(targetThing != null && cover.Equals(targetThing)) 
+                && cover.def.Fillage != FillCategory.Full
+                && cover.def.category != ThingCategory.Plant)
+            {
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Checks if the shooter can hit the target from a certain position with regards to cover height
+        /// </summary>
+        public override bool CanHitTargetFrom(IntVec3 root, TargetInfo targ)
+        {
+            if (base.CanHitTargetFrom(root, targ))
+            {
+                //Check if target is obstructed behind cover
+                Thing coverTarg;
+                if (this.GetCoverBetween(root.ToVector3Shifted(), targ.Cell.ToVector3Shifted(), out coverTarg))
+                {
+                    float targetHeight = Utility.GetCollisionHeight(targ.Thing);
+                    if (targetHeight <= coverTarg.def.fillPercent)
+                    {
+                        return false;
+                    }
+                }
+                //Check if shooter is obstructed by cover
+                Thing coverShoot;
+                if (this.GetCoverBetween(targ.Cell.ToVector3Shifted(), root.ToVector3Shifted(), out coverShoot))
+                {
+                    float shotHeight = Utility.GetCollisionHeight(this.caster);
+                    Pawn casterPawn = this.caster as Pawn;
+                    if (casterPawn != null)
+                    {
+                        shotHeight *= 0.75f;
+                    }
+                    if (shotHeight <= coverShoot.def.fillPercent)
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            return false;
         }
         
         /// <summary>
         /// Fires a projectile using a custom HitReportFor() method to override the vanilla one, as well as better collateral hit detection and adjustable range penalties and forcedMissRadius
         /// </summary>
         /// <returns>True for successful shot</returns>
-        protected bool TryCastShot(float forcedMissRadius, float rangeFactor)
+        protected override bool TryCastShot()
         {
             ShootLine shootLine;
             if (!base.TryFindShootLineFromTo(this.caster.Position, this.currentTarget, out shootLine))
+            {
+                return false;
+            }
+            if (!this.CanHitTargetFrom(this.caster.Position, this.currentTarget))
             {
                 return false;
             }
@@ -246,47 +320,6 @@ namespace Combat_Realism
             ProjectileCR projectile = (ProjectileCR)ThingMaker.MakeThing(this.verbProps.projectileDef, null);
             GenSpawn.Spawn(projectile, shootLine.Source);
             float lengthHorizontalSquared = (this.currentTarget.Cell - this.caster.Position).LengthHorizontalSquared;
-
-            //Forced Miss Calculations
-            if (lengthHorizontalSquared < 9f)
-            {
-                forcedMissRadius = 0f;
-            }
-            else
-            {
-                if (lengthHorizontalSquared < 25f)
-                {
-                    forcedMissRadius *= 0.5f;
-                }
-                else
-                {
-                    if (lengthHorizontalSquared < 49f)
-                    {
-                        forcedMissRadius *= 0.8f;
-                    }
-                }
-            }
-            if (forcedMissRadius > 0.5f)
-            {
-                int max = GenRadial.NumCellsInRadius(forcedMissRadius);
-                int rand = Rand.Range(0, max);
-                if (rand > 0)
-                {
-                    IntVec3 newTarget = this.currentTarget.Cell + GenRadial.RadialPattern[rand];
-                    projectile.canFreeIntercept = true;
-                    TargetInfo target = newTarget;
-                    if (!projectile.def.projectile.flyOverhead)
-                    {
-                        target = Utility.determineImpactPosition(this.caster.Position, newTarget, (int)(this.currentTarget.Cell - this.caster.Position).LengthHorizontal / 2);
-                    }
-                    projectile.Launch(this.caster, casterExactPosition, target, this.ownerEquipment);
-                    if (this.currentTarget.HasThing)
-                    {
-                        projectile.AssignedMissTarget = this.currentTarget.Thing;
-                    }
-                    return true;
-                }
-            }
 
             //New aiming algorithm
             projectile.canFreeIntercept = true;
@@ -302,11 +335,6 @@ namespace Combat_Realism
                 projectile.Launch(this.caster, casterExactPosition, new TargetInfo(shootLine.Dest), targetVec3, this.ownerEquipment);
             }
             return true;
-        }
-
-        protected override bool TryCastShot()
-        {
-            return TryCastShot(this.verbProps.forcedMissRadius, 1);
         }
 	}
 }

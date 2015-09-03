@@ -4,7 +4,7 @@ using UnityEngine;
 using Verse;
 namespace Combat_Realism
 {
-	public class Verb_ShootShotgun : Verb_ShootCR
+	public class Verb_ShootCRShotgun : Verb_ShootCR
 	{
         //shotgun shell fires 8 pellets
 		protected override bool TryCastShot()

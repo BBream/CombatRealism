@@ -14,7 +14,7 @@ namespace Combat_Realism
     /// <summary>
     /// Explosive with fragmentation effect
     /// </summary>
-	public class Projectile_ExplosiveFrag : Projectile_Explosive
+	public class ProjectileCR_Frag : ProjectileCR_Explosive
 	{
         //frag variables
         private int fragAmountSmall = 0;
@@ -58,14 +58,18 @@ namespace Combat_Realism
         /// <summary>
         /// Scatters fragments around
         /// </summary>
-        protected virtual void ScatterFragments(int radius, ThingDef projectileDef)
+        protected virtual void ScatterFragments(ThingDef projectileDef)
         {
-            Projectile projectile = (Projectile)ThingMaker.MakeThing(projectileDef, null);
-            int rand = Rand.Range(0, radius);
-            TargetInfo targetCell = this.Position + GenRadial.RadialPattern[rand];
-            TargetInfo target = Utility.determineImpactPosition(this.Position, targetCell);
+            ProjectileCR projectile = (ProjectileCR)ThingMaker.MakeThing(projectileDef, null);
+            projectile.canFreeIntercept = true;
+            projectile.shotAngle = Rand.Range(-0.5f, 0.5f);
+            projectile.shotHeight = 0.1f;
+
+            Vector3 shiftVec = (new Vector3(1, 0, 1) * Rand.Range(0, this.fragRange)).RotatedBy(Rand.Range(0, 360));
+            TargetInfo targetCell = (this.ExactPosition + shiftVec).ToIntVec3();
             GenSpawn.Spawn(projectile, this.Position);
-            projectile.Launch(this, target, this.launcher);
+
+            projectile.Launch(this, this.ExactPosition, targetCell, targetCell.Cell.ToVector3Shifted(), null);
         }
 
         /// <summary>
@@ -75,20 +79,18 @@ namespace Combat_Realism
         {
             if (this.getParameters())
             {
-                int radius = GenRadial.NumCellsInRadius(this.fragRange);
-
                 //Spawn projectiles
                 for (int i = 0; i < fragAmountSmall; i++)
                 {
-                    this.ScatterFragments(radius, this.fragProjectileSmall);
+                    this.ScatterFragments(this.fragProjectileSmall);
                 }
                 for (int i = 0; i < fragAmountMedium; i++)
                 {
-                    this.ScatterFragments(radius, this.fragProjectileMedium);
+                    this.ScatterFragments(this.fragProjectileMedium);
                 }
                 for (int i = 0; i < fragAmountLarge; i++)
                 {
-                    this.ScatterFragments(radius, this.fragProjectileLarge);
+                    this.ScatterFragments(this.fragProjectileLarge);
                 }
             }
             base.Explode();

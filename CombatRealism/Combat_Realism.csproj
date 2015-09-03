@@ -69,16 +69,16 @@
     <Compile Include="Combat_Realism\CompPropertiesCustom.cs" />
     <Compile Include="Combat_Realism\CompTurretInit.cs" />
     <Compile Include="Combat_Realism\ProjectileCR.cs" />
+    <Compile Include="Combat_Realism\ProjectileCR_Explosive.cs" />
     <Compile Include="Combat_Realism\Utility.cs" />
-    <Compile Include="Combat_Realism\Verb_ShootSniper.cs" />
-    <Compile Include="Combat_Realism\Verb_ShootRifle.cs" />
-    <Compile Include="Combat_Realism\Projectile_ExplosiveFrag.cs" />
+    <Compile Include="Combat_Realism\ProjectileCR_Frag.cs" />
     <Compile Include="Combat_Realism\ThingDef_ProjectileFrag.cs" />
-    <Compile Include="Combat_Realism\Verb_ShootMortar.cs" />
+    <Compile Include="Combat_Realism\Verb_ShootCRMortar.cs" />
+    <Compile Include="Combat_Realism\Verb_ShootCROneUse.cs" />
     <Compile Include="Projectile_Laser\Projectile_LaserRifle.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Projectile_Laser\ThingDef_LaserProjectile.cs" />
-    <Compile Include="Combat_Realism\Verb_ShootShotgun.cs" />
+    <Compile Include="Combat_Realism\Verb_ShootCRShotgun.cs" />
     <Compile Include="Combat_Realism\Verb_ShootCR.cs" />
   </ItemGroup>
   <ItemGroup />
