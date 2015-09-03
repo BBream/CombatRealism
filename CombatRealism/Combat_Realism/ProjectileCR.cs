@@ -43,7 +43,7 @@ namespace Combat_Realism
         {
             get
             {
-                int num = Mathf.RoundToInt((this.origin - this.destination).magnitude / (this.def.projectile.speed / 100f));
+            	int num = Mathf.RoundToInt((this.origin - this.destination).magnitude / (Math.Cos(this.shotAngle) * this.def.projectile.speed / 100f));
                 if (num < 1)
                 {
                     num = 1;
@@ -359,12 +359,14 @@ namespace Combat_Realism
                 }
                 List<Thing> list = Find.ThingGrid.ThingsListAt(base.Position);
                 float height = (list.Count > 0) ? ProjectileHeight(this.shotHeight, this.Distance, this.shotAngle, this.def.projectile.speed) : 0;
-                for (int i = 0; i < list.Count; i++)
-                {
-                    Thing thing2 = list[i];
-                    bool impacted = this.ImpactThroughBodySize(thing2, height);
-                    if (impacted)
-                    	return;
+                if (height > 0) {
+	                for (int i = 0; i < list.Count; i++)
+	                {
+	                    Thing thing2 = list[i];
+	                    bool impacted = this.ImpactThroughBodySize(thing2, height);
+	                    if (impacted)
+	                    	return;
+	                }
                 }
                 this.Impact(null);
                 return;
