@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -62,10 +61,10 @@ namespace Combat_Realism
         {
             ProjectileCR projectile = (ProjectileCR)ThingMaker.MakeThing(projectileDef, null);
             projectile.canFreeIntercept = true;
-            projectile.shotAngle = Rand.Range(-0.5f, 0.5f);
+            projectile.shotAngle = Random.Range(-1.0f, 0.5f);
             projectile.shotHeight = 0.1f;
 
-            Vector3 shiftVec = (new Vector3(1, 0, 1) * Rand.Range(0, this.fragRange)).RotatedBy(Rand.Range(0, 360));
+            Vector3 shiftVec = (new Vector3(1, 0, 1) * Random.Range(0, this.fragRange)).RotatedBy(Random.Range(0, 360));
             TargetInfo targetCell = (this.ExactPosition + shiftVec).ToIntVec3();
             GenSpawn.Spawn(projectile, this.Position);
 

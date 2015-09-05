@@ -43,7 +43,7 @@ namespace Combat_Realism
         {
             get
             {
-            	int num = Mathf.RoundToInt((this.origin - this.destination).magnitude / (Math.Cos(this.shotAngle) * this.def.projectile.speed / 100f));
+            	int num = Mathf.RoundToInt((float)((this.origin - this.destination).magnitude / (Math.Cos(this.shotAngle) * this.def.projectile.speed / 100f)));
                 if (num < 1)
                 {
                     num = 1;

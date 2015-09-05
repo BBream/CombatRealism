@@ -144,10 +144,15 @@ namespace Combat_Realism
             float targetableHeight = Utility.GetCollisionHeight(this.currentTarget.Thing);
             Thing cover;
 	        if (this.GetCoverBetween(sourceLoc, targetLoc, out cover))
-                {
-                    targetableHeight += cover.def.fillPercent;
-                }
-            heightDifference += targetableHeight * 0.5f;		//Optimal hit level is halfway
+            {
+                targetableHeight += cover.def.fillPercent;
+                targetableHeight *= 0.5f;   //Optimal hit level is halfway
+            }
+            else
+            {
+                targetableHeight *= 0.65f;  //Optimal hit level is center of mass
+            }
+            heightDifference += targetableHeight;
             this.shotHeight = (this.CasterPawn != null ? this.CasterPawn.BodySize * 0.75f : (this.caster != null ? this.caster.def.fillPercent : 0));
             heightDifference -= this.shotHeight;		//Assuming pawns shoot at 3/4ths of their body size
 	        skewVec += new Vector2(0, GetShotAngle(this.verbProps.projectileDef.projectile.speed, shotVec.magnitude, heightDifference) * (180 / (float)Math.PI));
