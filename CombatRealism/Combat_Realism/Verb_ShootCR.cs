@@ -59,7 +59,15 @@ namespace Combat_Realism
 		private float GetShotAngle(float velocity, float range, float heightDifference)
 		{
 			float gravity = 9.8f;
-			float angle = (float)Math.Atan((Math.Pow(velocity, 2) - Math.Sqrt(Math.Pow(velocity, 4) - gravity * (gravity * Math.Pow(range, 2) + 2 * heightDifference * Math.Pow(velocity, 2)))) / (gravity * range));
+            float angle = 0;
+            if (this.verbProps.projectileDef.projectile.flyOverhead)
+            {
+                angle = (float)Math.Atan((Math.Pow(velocity, 2) + (this.verbProps.projectileDef.projectile.flyOverhead ? 1 : -1) * Math.Sqrt(Math.Pow(velocity, 4) - gravity * (gravity * Math.Pow(range, 2) + 2 * heightDifference * Math.Pow(velocity, 2)))) / (gravity * range));
+            }
+            else
+            {
+                angle = (float)Math.Atan((Math.Pow(velocity, 2) - Math.Sqrt(Math.Pow(velocity, 4) - gravity * (gravity * Math.Pow(range, 2) + 2 * heightDifference * Math.Pow(velocity, 2)))) / (gravity * range));
+            }
 			return angle;
 		}
 		
