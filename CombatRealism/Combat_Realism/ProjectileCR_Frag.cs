@@ -61,14 +61,16 @@ namespace Combat_Realism
         {
             ProjectileCR projectile = (ProjectileCR)ThingMaker.MakeThing(projectileDef, null);
             projectile.canFreeIntercept = true;
-            projectile.shotAngle = Random.Range(-1.0f, 0.5f);
+            /*
+            projectile.shotAngle = Random.Range(-3.0f, 0.5f);
             projectile.shotHeight = 0.1f;
+             */
 
-            Vector3 shiftVec = (new Vector3(1, 0, 1) * Random.Range(0, this.fragRange)).RotatedBy(Random.Range(0, 360));
-            TargetInfo targetCell = (this.ExactPosition + shiftVec).ToIntVec3();
+            Vector3 exactTarget = this.ExactPosition + (new Vector3(1, 0, 1) * Random.Range(0, this.fragRange)).RotatedBy(Random.Range(0, 360));
+            TargetInfo targetCell = exactTarget.ToIntVec3();
             GenSpawn.Spawn(projectile, this.Position);
 
-            projectile.Launch(this, this.ExactPosition, targetCell, targetCell.Cell.ToVector3Shifted(), null);
+            projectile.Launch(this, this.ExactPosition, targetCell, exactTarget, null);
         }
 
         /// <summary>

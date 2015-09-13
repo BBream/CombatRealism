@@ -53,7 +53,7 @@
       <Private>False</Private>
     </Reference>
     <Reference Include="Community Core Library">
-      <HintPath>..\..\..\Visual Studio 2013\Projects\CombatRealism\CombatRealism\Source-DLLs\Community Core Library.dll</HintPath>
+      <HintPath>..\..\..\Visual Studio 2013\Source-DLLs\Community Core Library.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="System" />
@@ -70,8 +70,11 @@
   <ItemGroup>
     <Compile Include="Combat_Realism\BulletCR.cs" />
     <Compile Include="Combat_Realism\CompAim.cs" />
+    <Compile Include="Combat_Realism\CompAP.cs" />
+    <Compile Include="Combat_Realism\CompCharges.cs" />
     <Compile Include="Combat_Realism\CompPropertiesCustom.cs" />
     <Compile Include="Combat_Realism\CompTurretInit.cs" />
+    <Compile Include="Combat_Realism\DamageWorker_AddInjuryCR.cs" />
     <Compile Include="Combat_Realism\ProjectileCR.cs" />
     <Compile Include="Combat_Realism\ProjectileCR_Explosive.cs" />
     <Compile Include="Combat_Realism\Utility.cs" />

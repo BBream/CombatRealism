@@ -13,6 +13,32 @@ namespace Combat_Realism
 		private const float accuracyExponent = -2f;
 		private float shotAngle;
 		private float shotHeight;
+
+        private float _shotSpeed = -1;
+        private float shotSpeed
+        {
+            get
+            {
+                if (this._shotSpeed < 0)
+                {
+                    this._shotSpeed = this.verbProps.projectileDef.projectile.speed;
+                    if (this.ownerEquipment != null && this.ownerEquipment.def.HasComp(typeof(CompCharges)))
+                    {
+                        float newSpeed;
+                        CompCharges comp = this.ownerEquipment.GetComp<CompCharges>();
+                        if (comp.GetChargeSpeed((this.currentTarget.Cell - this.caster.Position).LengthHorizontal, out newSpeed))
+                        {
+                            this._shotSpeed = newSpeed;
+                        }
+                    }
+                    else
+                    {
+                        this._shotSpeed = this.verbProps.projectileDef.projectile.speed;
+                    }
+                }
+                return this._shotSpeed;
+            }
+        }
         
 		private CompPropertiesCustom cpCustom = null;
 		private CompPropertiesCustom cpCustomGet
@@ -57,8 +83,8 @@ namespace Combat_Realism
         }
 		
 		private float GetShotAngle(float velocity, float range, float heightDifference)
-		{
-			float gravity = 9.8f;
+        {
+            const float gravity = Utility.gravityConst;
             float angle = 0;
             if (this.verbProps.projectileDef.projectile.flyOverhead)
             {
@@ -72,8 +98,8 @@ namespace Combat_Realism
 		}
 		
 		private float GetDistanceTraveled(float velocity, float angle, float heightDifference)
-		{
-			float gravity = 9.8f;
+        {
+            const float gravity = Utility.gravityConst;
 			float distance = (float)((velocity * Math.Cos(angle)) / gravity) * (float)(velocity * Math.Sin(angle) + Math.Sqrt(Math.Pow(velocity * Math.Sin(angle), 2) + 2 * gravity * heightDifference));
 			return distance;
 		}
@@ -119,8 +145,10 @@ namespace Combat_Realism
             if (this.verbProps.burstShotCount == this.burstShotsLeft)
             {
                 float actualRange = Vector3.Distance(newTargetLoc, sourceLoc);
+                Log.Message("Actual distance: " + actualRange.ToString());
                 float estimationDeviation = ((1 - this.aimingAccuracy) * actualRange) * (2 - this.ownerEquipment.GetStatValue(StatDefOf.AccuracyLong) * 2);
                 this.estimatedTargetDistance = Mathf.Clamp(Rand.Gaussian(actualRange, estimationDeviation / 3), actualRange - estimationDeviation, actualRange + estimationDeviation);
+                Log.Message("Estimated distance: " + estimatedTargetDistance.ToString());
             }
 
             newTargetLoc = sourceLoc + shotVec.normalized * this.estimatedTargetDistance;
@@ -130,7 +158,7 @@ namespace Combat_Realism
             {
                 //Calculate current movement speed
                 float targetSpeed = GetMoveSpeed(targetPawn);
-                float timeToTarget = this.estimatedTargetDistance / this.verbProps.projectileDef.projectile.speed;
+                float timeToTarget = this.estimatedTargetDistance / this.shotSpeed;
                 float leadDistance = targetSpeed * timeToTarget;
                 Vector3 moveVec = targetPawn.pather.nextCell.ToVector3() - Vector3.Scale(targetPawn.DrawPos, new Vector3(1, 0, 1));
 
@@ -150,20 +178,24 @@ namespace Combat_Realism
             //Height difference calculations for ShotAngle
             float heightDifference = 0;
             float targetableHeight = Utility.GetCollisionHeight(this.currentTarget.Thing);
+            Log.Message("Initial targetable height: " + targetableHeight.ToString());
             Thing cover;
 	        if (this.GetCoverBetween(sourceLoc, targetLoc, out cover))
             {
-                targetableHeight += cover.def.fillPercent;
+                targetableHeight += Utility.GetCollisionHeight(cover);
                 targetableHeight *= 0.5f;   //Optimal hit level is halfway
+                Log.Message("Post-cover targetable height: " + targetableHeight.ToString());
             }
             else
             {
                 targetableHeight *= 0.65f;  //Optimal hit level is center of mass
+                Log.Message("CoM targetable height: " + targetableHeight.ToString());
             }
             heightDifference += targetableHeight;
-            this.shotHeight = (this.CasterPawn != null ? this.CasterPawn.BodySize * 0.75f : (this.caster != null ? this.caster.def.fillPercent : 0));
-            heightDifference -= this.shotHeight;		//Assuming pawns shoot at 3/4ths of their body size
-	        skewVec += new Vector2(0, GetShotAngle(this.verbProps.projectileDef.projectile.speed, shotVec.magnitude, heightDifference) * (180 / (float)Math.PI));
+            this.shotHeight = this.caster != null ? Utility.GetCollisionHeight(this.caster) : 0;
+            heightDifference -= this.shotHeight;
+            Log.Message("Height difference: " + heightDifference.ToString());
+	        skewVec += new Vector2(0, GetShotAngle(this.shotSpeed, shotVec.magnitude, heightDifference) * (180 / (float)Math.PI));
             
            	//Get shootervariation
 	        int ticks = Find.TickManager.TicksAbs;
@@ -188,7 +220,7 @@ namespace Combat_Realism
             skewVec += shotVarVec;
 			
             //Skewing		-		Applied after the leading calculations to not screw them up
-            float distanceTraveled = GetDistanceTraveled(this.verbProps.projectileDef.projectile.speed, (float)(skewVec.y * (Math.PI / 180)), this.shotHeight);
+            float distanceTraveled = GetDistanceTraveled(this.shotSpeed, (float)(skewVec.y * (Math.PI / 180)), this.shotHeight);
             newTargetLoc = sourceLoc + ((newTargetLoc - sourceLoc).normalized * distanceTraveled);
             newTargetLoc = sourceLoc + (Quaternion.AngleAxis(skewVec.x, Vector3.up) * (newTargetLoc - sourceLoc));
             
@@ -289,7 +321,7 @@ namespace Combat_Realism
                 if (this.GetCoverBetween(root.ToVector3Shifted(), targ.Cell.ToVector3Shifted(), out coverTarg))
                 {
                     float targetHeight = Utility.GetCollisionHeight(targ.Thing);
-                    if (targetHeight <= coverTarg.def.fillPercent)
+                    if (targetHeight <= Utility.GetCollisionHeight(coverTarg))
                     {
                         return false;
                     }
@@ -304,7 +336,7 @@ namespace Combat_Realism
                     {
                         shotHeight *= 0.75f;
                     }
-                    if (shotHeight <= coverShoot.def.fillPercent)
+                    if (shotHeight <= Utility.GetCollisionHeight(coverShoot))
                     {
                         return false;
                     }
@@ -315,7 +347,7 @@ namespace Combat_Realism
         }
         
         /// <summary>
-        /// Fires a projectile using a custom HitReportFor() method to override the vanilla one, as well as better collateral hit detection and adjustable range penalties and forcedMissRadius
+        /// Fires a projectile using the new aiming system
         /// </summary>
         /// <returns>True for successful shot</returns>
         protected override bool TryCastShot()
@@ -339,6 +371,7 @@ namespace Combat_Realism
             Vector3 targetVec3 = this.ShiftTarget();
             projectile.shotAngle = this.shotAngle;
             projectile.shotHeight = this.shotHeight;
+            projectile.shotSpeed = this.shotSpeed;
             if (this.currentTarget.Thing != null)
             {
                 projectile.Launch(this.caster, casterExactPosition, new TargetInfo(this.currentTarget.Thing), targetVec3, this.ownerEquipment);
