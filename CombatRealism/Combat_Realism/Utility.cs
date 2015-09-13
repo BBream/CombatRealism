@@ -70,16 +70,23 @@ namespace Combat_Realism
             float pierceAmount = 0f;
 
             //Check if the projectile has the armor-piercing comp
-            ThingDef projectile = dinfo.Source.Verbs.Where(x => x.isPrimary).First().projectileDef;
             CompProperties_AP props = null;
-            if (projectile != null && projectile.HasComp(typeof(CompAP)))
+            VerbProperties verbProps = dinfo.Source.Verbs.Where(x => x.isPrimary).First();
+            if (verbProps != null)
             {
-                props = (CompProperties_AP)projectile.GetCompProperties(typeof(CompAP));
+                ThingDef projectile = verbProps.projectileDef;
+                if (projectile != null && projectile.HasComp(typeof(CompAP)))
+                {
+                    props = (CompProperties_AP)projectile.GetCompProperties(typeof(CompAP));
+                }
             }
-            else if (dinfo.Source.HasComp(typeof(CompAP)))
+
+            //Check weapon for comp if projectile doesn't have it
+            if (props == null && dinfo.Source.HasComp(typeof(CompAP)))
             {
                 props = (CompProperties_AP)dinfo.Source.GetCompProperties(typeof(CompAP));
             }
+
             if (props != null)
             {
                 pierceAmount = props.armorPenetration;
@@ -88,15 +95,19 @@ namespace Combat_Realism
             //Run armor calculations on all apparel and pawn
             if (pawn.apparel != null)
             {
-                List<Apparel> wornApparel = pawn.apparel.WornApparel;
-                foreach (Apparel apparel in wornApparel)
+                List<Apparel> wornApparel = new List<Apparel>(pawn.apparel.WornApparel);
+                for (int i = wornApparel.Count - 1; i >= 0; i--)
                 {
-                    if (apparel.def.apparel.CoversBodyPart(part))
+                    if (wornApparel[i].def.apparel.CoversBodyPart(part))
                     {
-                        deflected = Utility.ApplyArmor(ref damageAmount, apparel.GetStatValue(deflectionStat, true), apparel, damageDef, pierceAmount);
+                        deflected = Utility.ApplyArmor(ref damageAmount, wornApparel[i].GetStatValue(deflectionStat, true), wornApparel[i], damageDef, pierceAmount);
                         if (damageAmount < 0.001)
                         {
                             return 0;
+                        }
+                        if (deflected)
+                        {
+                            return Mathf.CeilToInt(damageAmount);
                         }
                     }
                 }
@@ -105,19 +116,34 @@ namespace Combat_Realism
             return Mathf.RoundToInt(damageAmount);
         }
 
+        public static int GetAfterArmorDamage(Pawn pawn, int amountInt, BodyPartRecord part, DamageInfo dinfo)
+        {
+            bool flag = false;
+            return Utility.GetAfterArmorDamage(pawn, amountInt, part, dinfo, ref flag);
+        }
+
         private static bool ApplyArmor(ref float damAmount, float armorRating, Thing armorThing, DamageDef damageDef, float pierceAmount)
         {
-            float deflectionChance = Mathf.Clamp(0.5f + (pierceAmount - armorRating) * 2, 0, 1);
+            float originalDamage = damAmount;
+            bool deflected = false;
+            float deflectionChance = Mathf.Clamp((armorRating - pierceAmount) * 4, 0, 1);
 
             //Shot is deflected
-            if (deflectionChance > 0 && Rand.Value > deflectionChance)
+            if (deflectionChance > 0 && Rand.Value < deflectionChance)
             {
-                damAmount *= armorRating;
-                return true;
+                deflected = true;
+            }
+            //Damage calculations
+            armorRating = Mathf.Clamp(2 * armorRating - pierceAmount, 0, 1);
+            damAmount *= 1 - armorRating;
+
+            //Damage armor
+            if (armorThing != null && armorThing as Pawn == null)
+            {
+                armorThing.TakeDamage(new DamageInfo(damageDef, Mathf.CeilToInt(originalDamage - damAmount), null, null, null));
             }
 
-
-            return false;
+            return deflected;
         }
 
     }

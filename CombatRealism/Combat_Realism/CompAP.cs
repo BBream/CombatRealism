@@ -12,7 +12,6 @@ namespace Combat_Realism
     class CompProperties_AP : CompProperties
     {
         public float armorPenetration = 0f;
-        public DamageDef deflectDamageDef = null; 
         
         public CompProperties_AP()
         {
