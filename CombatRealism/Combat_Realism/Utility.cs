@@ -45,7 +45,7 @@ namespace Combat_Realism
                 float collisionHeight = pawn.BodySize;
                 if (pawn.GetPosture() != PawnPosture.Standing)
                 {
-                    collisionHeight = pawn.BodySize > 1 ? pawn.BodySize - 0.8f : 0.8f * pawn.BodySize;
+                    collisionHeight = pawn.BodySize > 1 ? pawn.BodySize - 0.8f : 0.2f * pawn.BodySize;
                 }
                 return collisionHeight * collisionHeightFactor;
             }

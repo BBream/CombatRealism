@@ -145,10 +145,8 @@ namespace Combat_Realism
             if (this.verbProps.burstShotCount == this.burstShotsLeft)
             {
                 float actualRange = Vector3.Distance(newTargetLoc, sourceLoc);
-                Log.Message("Actual distance: " + actualRange.ToString());
                 float estimationDeviation = ((1 - this.aimingAccuracy) * actualRange) * (2 - this.ownerEquipment.GetStatValue(StatDefOf.AccuracyLong) * 2);
                 this.estimatedTargetDistance = Mathf.Clamp(Rand.Gaussian(actualRange, estimationDeviation / 3), actualRange - estimationDeviation, actualRange + estimationDeviation);
-                Log.Message("Estimated distance: " + estimatedTargetDistance.ToString());
             }
 
             newTargetLoc = sourceLoc + shotVec.normalized * this.estimatedTargetDistance;
@@ -178,23 +176,23 @@ namespace Combat_Realism
             //Height difference calculations for ShotAngle
             float heightDifference = 0;
             float targetableHeight = Utility.GetCollisionHeight(this.currentTarget.Thing);
-            Log.Message("Initial targetable height: " + targetableHeight.ToString());
             Thing cover;
 	        if (this.GetCoverBetween(sourceLoc, targetLoc, out cover))
             {
                 targetableHeight += Utility.GetCollisionHeight(cover);
                 targetableHeight *= 0.5f;   //Optimal hit level is halfway
-                Log.Message("Post-cover targetable height: " + targetableHeight.ToString());
             }
             else
             {
                 targetableHeight *= 0.65f;  //Optimal hit level is center of mass
-                Log.Message("CoM targetable height: " + targetableHeight.ToString());
             }
             heightDifference += targetableHeight;
-            this.shotHeight = this.caster != null ? Utility.GetCollisionHeight(this.caster) : 0;
+            this.shotHeight = Utility.GetCollisionHeight(this.caster);
+            if (this.caster as Pawn != null)
+            {
+                this.shotHeight *= 0.85f;
+            }
             heightDifference -= this.shotHeight;
-            Log.Message("Height difference: " + heightDifference.ToString());
 	        skewVec += new Vector2(0, GetShotAngle(this.shotSpeed, shotVec.magnitude, heightDifference) * (180 / (float)Math.PI));
             
            	//Get shootervariation

@@ -84,12 +84,12 @@ namespace Combat_Realism
         public float shotAngle = 0f;
         public float shotHeight = 0f;
         public float shotSpeed = -1f;
-        protected float downedHitFactor = 0.2f;
-        private float Distance
+        private float distanceFromOrigin
         {
         	get
         	{
-        		return (this.destination - this.origin).magnitude;
+                Vector3 currentPos = Vector3.Scale(this.ExactPosition, new Vector3(1,0,1));
+                return (float)((currentPos - this.origin).magnitude);
         	}
         }
 
@@ -125,7 +125,7 @@ namespace Combat_Realism
         public float ProjectileHeight(float zeroheight, float distance, float angle, float velocity)
         {
             const float gravity = Utility.gravityConst;
-			float height = (float)(zeroheight + (distance * Math.Tan(angle)) - (gravity * Math.Pow(distance, 2)) / (2 * Math.Pow(velocity * Math.Cos(angle), 2)));
+			float height = (float)(zeroheight + ((distance * Math.Tan(angle)) - (gravity * Math.Pow(distance, 2)) / (2 * Math.Pow(velocity * Math.Cos(angle), 2))));
         	
         	return height;
         }
@@ -266,8 +266,7 @@ namespace Combat_Realism
             //Check for entries first so we avoid doing costly height calculations
             if (mainThingList.Count > 0)
             {
-                float height = ProjectileHeight(this.shotHeight, this.Distance, this.shotAngle, this.shotSpeed);
-                Log.Message("Height: " + height.ToString());
+                float height = ProjectileHeight(this.shotHeight, this.distanceFromOrigin, this.shotAngle, this.shotSpeed);
                 for (int i = 0; i < mainThingList.Count; i++)
                 {
                     Thing thing = mainThingList[i];
@@ -321,7 +320,6 @@ namespace Combat_Realism
             {
                 if (height < Utility.GetCollisionHeight(thing) || thing.def.Fillage == FillCategory.Full)
             	{
-                    Log.Message("Impacting: " + thing.ToString() + ", " + Utility.GetCollisionHeight(thing).ToString() + ", " + height.ToString());
             		this.Impact(thing);
             		return true;
             	}
@@ -347,7 +345,7 @@ namespace Combat_Realism
             //Modified
             if (this.assignedTarget != null && this.assignedTarget.Position == this.Position)	//it was aimed at something and that something is still there
             {
-                this.ImpactThroughBodySize(this.assignedTarget, ProjectileHeight(this.shotHeight, this.Distance, this.shotAngle, this.shotSpeed));
+                this.ImpactThroughBodySize(this.assignedTarget, ProjectileHeight(this.shotHeight, this.distanceFromOrigin, this.shotAngle, this.shotSpeed));
                 return;
             }
             else
@@ -355,11 +353,11 @@ namespace Combat_Realism
                 Thing thing = Find.ThingGrid.ThingAt(base.Position, ThingCategory.Pawn);
                 if (thing != null)
                 {
-                    this.ImpactThroughBodySize(thing, ProjectileHeight(this.shotHeight, this.Distance, this.shotAngle, this.shotSpeed));
+                    this.ImpactThroughBodySize(thing, ProjectileHeight(this.shotHeight, this.distanceFromOrigin, this.shotAngle, this.shotSpeed));
                     return;
                 }
                 List<Thing> list = Find.ThingGrid.ThingsListAt(base.Position);
-                float height = (list.Count > 0) ? ProjectileHeight(this.shotHeight, this.Distance, this.shotAngle, this.shotSpeed) : 0;
+                float height = (list.Count > 0) ? ProjectileHeight(this.shotHeight, this.distanceFromOrigin, this.shotAngle, this.shotSpeed) : 0;
                 if (height > 0) {
 	                for (int i = 0; i < list.Count; i++)
 	                {
