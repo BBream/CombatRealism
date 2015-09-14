@@ -41,5 +41,11 @@ namespace Combat_Realism
 
             return true;
         }
+
+        public override void Notify_Dropped()
+        {
+            base.Notify_Dropped();
+            caster = null;
+        }
     }
 }
