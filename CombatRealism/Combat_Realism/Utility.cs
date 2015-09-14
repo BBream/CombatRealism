@@ -166,7 +166,7 @@ namespace Combat_Realism
                 float absorbedDamage = 0f;
                 if (damageDef == absorbDamageDef)
                 {
-                    absorbedDamage = (originalDamage - damAmount) * pierceAmount;
+                    absorbedDamage = (originalDamage - damAmount) * (1 + pierceAmount);
                 }
                 else
                 {
