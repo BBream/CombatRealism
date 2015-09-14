@@ -191,10 +191,10 @@ namespace Combat_Realism
 			}
 			int damageAmount = dinfo.Amount;
             bool shotAbsorbed = false;
-			if (flag)
+			if (!result.deflected && flag)
 			{
 				//damageAmount = ArmorUtility.GetAfterArmorDamage(pawn, dinfo.Amount, exactPartFromDamageInfo, dinfo.Def);
-                damageAmount = Utility.GetAfterArmorDamage(pawn, dinfo.Amount, exactPartFromDamageInfo, dinfo, ref shotAbsorbed);
+                damageAmount = Utility.GetAfterArmorDamage(pawn, dinfo.Amount, exactPartFromDamageInfo, dinfo, true, ref shotAbsorbed);
 			}
 			if ((double)damageAmount < 0.001)
 			{
@@ -214,7 +214,7 @@ namespace Combat_Realism
                     {
                         parentPart = parentPart.parent;
                     }
-                    DamageInfo dinfo2 = new DamageInfo(DamageDefOf.Blunt, damageAmount, dinfo.Instigator, new BodyPartDamageInfo(parentPart, false), dinfo.Source);
+                    DamageInfo dinfo2 = new DamageInfo(Utility.absorbDamageDef, damageAmount, dinfo.Instigator, new BodyPartDamageInfo(parentPart, false), dinfo.Source);
                     this.ApplyDamagePartial(dinfo2, pawn, ref result);
                     return;
                 }
@@ -322,8 +322,8 @@ namespace Combat_Realism
 					hediff_Injury.sourceBodyPartGroup = injury.sourceBodyPartGroup;
 					hediff_Injury.Severity = (float)(dinfo.Amount / 2);
 					if (involveArmor)
-					{
-						hediff_Injury.Severity = (float)ArmorUtility.GetAfterArmorDamage(pawn, dinfo.Amount / 2, part, dinfo.Def);
+                    {
+						hediff_Injury.Severity = (float)Utility.GetAfterArmorDamage(pawn, dinfo.Amount / 2, part, dinfo);
 					}
 					if (hediff_Injury.Severity <= 0f)
 					{
@@ -355,7 +355,7 @@ namespace Combat_Realism
 						hediff_Injury.Severity = (float)dinfo.Amount;
 						if (involveArmor)
 						{
-							hediff_Injury.Severity = (float)ArmorUtility.GetAfterArmorDamage(pawn, dinfo.Amount, parent, dinfo.Def);
+							hediff_Injury.Severity = (float)Utility.GetAfterArmorDamage(pawn, dinfo.Amount, parent, dinfo);
 						}
 						if (hediff_Injury.Severity <= 0f)
 						{

@@ -54,10 +54,12 @@ namespace Combat_Realism
 
         //------------------------------ Armor Calculations ------------------------------
 
+        public static readonly DamageDef absorbDamageDef = DamageDefOf.Blunt;   //The damage def to convert absorbed shots into
+
         /// <summary>
         /// Calculates deflection chance and damage through armor
         /// </summary>
-        public static int GetAfterArmorDamage(Pawn pawn, int amountInt, BodyPartRecord part, DamageInfo dinfo, ref bool deflected)
+        public static int GetAfterArmorDamage(Pawn pawn, int amountInt, BodyPartRecord part, DamageInfo dinfo, bool damageArmor, ref bool deflected)
         {
             DamageDef damageDef = dinfo.Def;
             if (damageDef.armorCategory == DamageArmorCategory.IgnoreArmor)
@@ -92,7 +94,7 @@ namespace Combat_Realism
                 pierceAmount = props.armorPenetration;
             }
 
-            //Run armor calculations on all apparel and pawn
+            //Run armor calculations on all apparel
             if (pawn.apparel != null)
             {
                 List<Apparel> wornApparel = new List<Apparel>(pawn.apparel.WornApparel);
@@ -100,49 +102,87 @@ namespace Combat_Realism
                 {
                     if (wornApparel[i].def.apparel.CoversBodyPart(part))
                     {
-                        deflected = Utility.ApplyArmor(ref damageAmount, wornApparel[i].GetStatValue(deflectionStat, true), wornApparel[i], damageDef, pierceAmount);
+                        Thing armorThing = damageArmor ? wornApparel[i] : null;
+
+                        //Check for deflection
+                        if (Utility.ApplyArmor(ref damageAmount, ref pierceAmount, wornApparel[i].GetStatValue(deflectionStat, true), armorThing, damageDef))
+                        {
+                            deflected = true;
+                            if (damageDef != absorbDamageDef)
+                            {
+                                damageDef = absorbDamageDef;
+                                deflectionStat = damageDef.armorCategory.DeflectionStat();
+                                i++;
+                            }
+                        }
                         if (damageAmount < 0.001)
                         {
                             return 0;
                         }
-                        if (deflected)
-                        {
-                            return Mathf.CeilToInt(damageAmount);
-                        }
                     }
                 }
             }
-            deflected = Utility.ApplyArmor(ref damageAmount, pawn.GetStatValue(deflectionStat, true), null, damageDef, pierceAmount);
+            //Check for pawn racial armor
+            if (Utility.ApplyArmor(ref damageAmount, ref pierceAmount, pawn.GetStatValue(deflectionStat, true), null, damageDef))
+            {
+                deflected = true;
+                if (damageAmount < 0.001)
+                {
+                    return 0;
+                }
+                damageDef = absorbDamageDef;
+                deflectionStat = damageDef.armorCategory.DeflectionStat();
+                Utility.ApplyArmor(ref damageAmount, ref pierceAmount, pawn.GetStatValue(deflectionStat, true), pawn, damageDef);
+            }
             return Mathf.RoundToInt(damageAmount);
         }
 
+        /// <summary>
+        /// For use with misc DamageWorker functions
+        /// </summary>
         public static int GetAfterArmorDamage(Pawn pawn, int amountInt, BodyPartRecord part, DamageInfo dinfo)
         {
             bool flag = false;
-            return Utility.GetAfterArmorDamage(pawn, amountInt, part, dinfo, ref flag);
+            return Utility.GetAfterArmorDamage(pawn, amountInt, part, dinfo, false, ref flag);
         }
 
-        private static bool ApplyArmor(ref float damAmount, float armorRating, Thing armorThing, DamageDef damageDef, float pierceAmount)
+        private static bool ApplyArmor(ref float damAmount, ref float pierceAmount, float armorRating, Thing armorThing, DamageDef damageDef)
         {
             float originalDamage = damAmount;
             bool deflected = false;
-            float deflectionChance = Mathf.Clamp((armorRating - pierceAmount) * 4, 0, 1);
+            float penetrationChance = Mathf.Clamp((pierceAmount - armorRating) * 4, 0, 1);
 
             //Shot is deflected
-            if (deflectionChance > 0 && Rand.Value < deflectionChance)
+            if (penetrationChance == 0 || Rand.Value > penetrationChance)
             {
                 deflected = true;
             }
             //Damage calculations
-            armorRating = Mathf.Clamp(2 * armorRating - pierceAmount, 0, 1);
-            damAmount *= 1 - armorRating;
+            damAmount *= 1 - Mathf.Clamp(2 * armorRating - pierceAmount, 0, 1);
 
             //Damage armor
-            if (armorThing != null && armorThing as Pawn == null)
+            if (armorThing != null)
             {
-                armorThing.TakeDamage(new DamageInfo(damageDef, Mathf.CeilToInt(originalDamage - damAmount), null, null, null));
+                float absorbedDamage = 0f;
+                if (damageDef == absorbDamageDef)
+                {
+                    absorbedDamage = (originalDamage - damAmount) * pierceAmount;
+                }
+                else
+                {
+                    absorbedDamage = originalDamage * Mathf.Max(0.3f, (1 - pierceAmount));
+                }
+                if (armorThing as Pawn == null)
+                {
+                    armorThing.TakeDamage(new DamageInfo(damageDef, Mathf.CeilToInt(absorbedDamage), null, null, null));
+                }
+                else
+                {
+                    damAmount += absorbedDamage;
+                }
             }
 
+            pierceAmount *= Mathf.Max(0, 1 - armorRating);
             return deflected;
         }
 
