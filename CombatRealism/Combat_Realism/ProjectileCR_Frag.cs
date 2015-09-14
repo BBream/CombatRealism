@@ -15,6 +15,8 @@ namespace Combat_Realism
     /// </summary>
 	public class ProjectileCR_Frag : ProjectileCR_Explosive
 	{
+        private Thing equipment = null;
+
         //frag variables
         private int fragAmountSmall = 0;
         private int fragAmountMedium = 0;
@@ -70,7 +72,7 @@ namespace Combat_Realism
             TargetInfo targetCell = exactTarget.ToIntVec3();
             GenSpawn.Spawn(projectile, this.Position);
 
-            projectile.Launch(this, this.ExactPosition, targetCell, exactTarget, null);
+            projectile.Launch(this, this.ExactPosition, targetCell, exactTarget, equipment);
         }
 
         /// <summary>
@@ -96,5 +98,11 @@ namespace Combat_Realism
             }
             base.Explode();
 		}
+
+        public override void Launch(Thing launcher, Vector3 origin, TargetInfo targ, Thing equipment = null)
+        {
+            base.Launch(launcher, origin, targ, equipment);
+            this.equipment = equipment;
+        }
 	}
 }

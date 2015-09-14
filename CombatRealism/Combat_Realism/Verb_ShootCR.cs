@@ -110,7 +110,7 @@ namespace Combat_Realism
         protected virtual Vector3 ShiftTarget()
         {
         		// ----------------------------------- STEP 0: Actual location
-        	
+
             Pawn targetPawn = this.currentTarget.Thing as Pawn;
             Vector3 targetLoc = targetPawn != null ? targetPawn.DrawPos : this.currentTarget.Cell.ToVector3Shifted();
             Vector3 sourceLoc = this.CasterPawn != null ? this.CasterPawn.DrawPos : this.caster.Position.ToVector3Shifted();
@@ -138,7 +138,7 @@ namespace Combat_Realism
             }
 			
             	// ----------------------------------- STEP 2: Estimated shot to hit location
-            
+
             shotVec = newTargetLoc - sourceLoc;	//Updated for the estimation to hit Estimated Location 
             
             //Estimate range on first shot of burst
@@ -166,7 +166,7 @@ namespace Combat_Realism
             }
             
             	// ----------------------------------- STEP 3: Recoil, Skewing, Skill checks, Cover calculations
-            
+
             shotVec = newTargetLoc - sourceLoc;	//Reassigned for further calculations
             
             Vector2 skewVec = new Vector2(0, 0);
@@ -206,10 +206,11 @@ namespace Combat_Realism
 	        skewVec += shooterVec;
             
             	// ----------------------------------- STEP 4: Mechanical variation
-            	
+
+
             //Get shotvariation
             Vector2 shotVarVec = new Vector2(0, 0);
-            if(this.cpCustomGet.shotVariation != 0)
+            if(this.cpCustomGet != null && this.cpCustomGet.shotVariation != 0)
             {
                 float shotVariation = this.cpCustomGet.shotVariation * (2f - this.ownerEquipment.GetStatValue(StatDefOf.AccuracyTouch) * 2);
                 shotVarVec = Utility.GenRandInCircle(shotVariation);

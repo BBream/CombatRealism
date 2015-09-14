@@ -73,20 +73,23 @@ namespace Combat_Realism
 
             //Check if the projectile has the armor-piercing comp
             CompProperties_AP props = null;
-            VerbProperties verbProps = dinfo.Source.Verbs.Where(x => x.isPrimary).First();
-            if (verbProps != null)
+            if (dinfo.Source != null)
             {
-                ThingDef projectile = verbProps.projectileDef;
-                if (projectile != null && projectile.HasComp(typeof(CompAP)))
+                VerbProperties verbProps = dinfo.Source.Verbs.Where(x => x.isPrimary).First();
+                if (verbProps != null)
                 {
-                    props = (CompProperties_AP)projectile.GetCompProperties(typeof(CompAP));
+                    ThingDef projectile = verbProps.projectileDef;
+                    if (projectile != null && projectile.HasComp(typeof(CompAP)))
+                    {
+                        props = (CompProperties_AP)projectile.GetCompProperties(typeof(CompAP));
+                    }
                 }
-            }
 
-            //Check weapon for comp if projectile doesn't have it
-            if (props == null && dinfo.Source.HasComp(typeof(CompAP)))
-            {
-                props = (CompProperties_AP)dinfo.Source.GetCompProperties(typeof(CompAP));
+                //Check weapon for comp if projectile doesn't have it
+                if (props == null && dinfo.Source.HasComp(typeof(CompAP)))
+                {
+                    props = (CompProperties_AP)dinfo.Source.GetCompProperties(typeof(CompAP));
+                }
             }
 
             if (props != null)

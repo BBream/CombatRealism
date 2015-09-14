@@ -131,7 +131,7 @@ namespace Combat_Realism
         }
         
         //Added new calculations for downed pawns, destination
-        public void Launch(Thing launcher, Vector3 origin, TargetInfo targ, Thing equipment = null)
+        public virtual void Launch(Thing launcher, Vector3 origin, TargetInfo targ, Thing equipment = null)
         {
             if (this.shotSpeed < 0)
             {
