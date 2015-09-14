@@ -10,65 +10,6 @@ namespace Combat_Realism
     class Utility
     {
         /// <summary>
-        /// Determines the impact location accounting for cover obstruction not accounted for by vanilla collision, with chance of interception proportional to distance travelled.
-        /// Collision occurs only after specified range, use 1 for collision detection at all ranges, 0 to disable distance effect on intercept chance.
-        /// </summary>
-        public static TargetInfo determineImpactPosition(IntVec3 originalPosition, TargetInfo originalTarget, int minCollisionRange)
-        {
-            //Flight path is divided into 1 cell segments
-            Vector3 trajectory = originalTarget.Cell.ToVector3() - originalPosition.ToVector3();
-            int numSegments = (int)trajectory.magnitude;
-            Vector3 trajectorySegment = trajectory / trajectory.magnitude;
-
-            Vector3 exactTestedPosition = originalPosition.ToVector3();
-            IntVec3 testedPosition = originalPosition;
-
-            //Go through flight path one segment at a time
-            for (int segmentIndex = 1; segmentIndex < numSegments; segmentIndex++)
-            {
-                exactTestedPosition += trajectorySegment;
-                testedPosition = exactTestedPosition.ToIntVec3();
-
-                if (!exactTestedPosition.InBounds())
-                {
-                    break;
-                }
-
-                //Check for collision starting at minimum collision range
-                if (segmentIndex >= minCollisionRange)
-                {
-                    List<Thing> list = Find.ThingGrid.ThingsListAt(testedPosition);
-                    for (int i = 0; i < list.Count; i++)
-                    {
-                        Thing currentThing = list[i];
-
-                        float collateralChance = 0f;
-
-                        if (currentThing.def.Fillage == FillCategory.Partial && currentThing.def.category != ThingCategory.Pawn)
-                        {
-                            collateralChance = currentThing.def.fillPercent;
-                        }
-                        if (minCollisionRange != 0)
-                        {
-                            collateralChance *= segmentIndex / trajectory.magnitude;
-                        }
-
-                        if (Rand.Value < collateralChance)
-                        {
-                            return new TargetInfo(currentThing);
-                        }
-                    }
-                }
-            }
-            return originalTarget;
-        }
-
-        public static TargetInfo determineImpactPosition(IntVec3 originalPosition, TargetInfo originalTarget)
-        {
-            return determineImpactPosition(originalPosition, originalTarget, 0);
-        }
-
-        /// <summary>
         /// Generates a random Vector2 in a circle with given radius
         /// </summary>
         public static Vector2 GenRandInCircle(float radius)
@@ -85,6 +26,10 @@ namespace Combat_Realism
             return new Vector2((float)(b * radius * Mathf.Cos(2 * Mathf.PI * a / b)), (float)(b * radius * Mathf.Sin(2 * Mathf.PI * a / b)));
         }
 
+        //------------------------------ Physics Calculations ------------------------------
+
+        public const float gravityConst = 9.8f;
+        public const float collisionHeightFactor = 0.35f;
         /// <summary>
         /// Returns the collision height of a Thing
         /// </summary>
@@ -98,13 +43,151 @@ namespace Combat_Realism
             if (pawn != null)
             {
                 float collisionHeight = pawn.BodySize;
-                if (pawn.Downed)
+                if (pawn.GetPosture() != PawnPosture.Standing)
                 {
-                    collisionHeight = pawn.BodySize > 1 ? pawn.BodySize - 0.8f : 0.8f * pawn.BodySize;
+                    collisionHeight = pawn.BodySize > 1 ? pawn.BodySize - 0.8f : 0.2f * pawn.BodySize;
                 }
-                return collisionHeight;
+                return collisionHeight * collisionHeightFactor;
             }
-            return thing.def.fillPercent;
+            return thing.def.fillPercent * collisionHeightFactor;
         }
+
+        //------------------------------ Armor Calculations ------------------------------
+
+        public static readonly DamageDef absorbDamageDef = DamageDefOf.Blunt;   //The damage def to convert absorbed shots into
+
+        /// <summary>
+        /// Calculates deflection chance and damage through armor
+        /// </summary>
+        public static int GetAfterArmorDamage(Pawn pawn, int amountInt, BodyPartRecord part, DamageInfo dinfo, bool damageArmor, ref bool deflected)
+        {
+            DamageDef damageDef = dinfo.Def;
+            if (damageDef.armorCategory == DamageArmorCategory.IgnoreArmor)
+            {
+                return amountInt;
+            }
+
+            float damageAmount = (float)amountInt;
+            StatDef deflectionStat = damageDef.armorCategory.DeflectionStat();
+            float pierceAmount = 0f;
+
+            //Check if the projectile has the armor-piercing comp
+            CompProperties_AP props = null;
+            if (dinfo.Source != null)
+            {
+                VerbProperties verbProps = dinfo.Source.Verbs.Where(x => x.isPrimary).First();
+                if (verbProps != null)
+                {
+                    ThingDef projectile = verbProps.projectileDef;
+                    if (projectile != null && projectile.HasComp(typeof(CompAP)))
+                    {
+                        props = (CompProperties_AP)projectile.GetCompProperties(typeof(CompAP));
+                    }
+                }
+
+                //Check weapon for comp if projectile doesn't have it
+                if (props == null && dinfo.Source.HasComp(typeof(CompAP)))
+                {
+                    props = (CompProperties_AP)dinfo.Source.GetCompProperties(typeof(CompAP));
+                }
+            }
+
+            if (props != null)
+            {
+                pierceAmount = props.armorPenetration;
+            }
+
+            //Run armor calculations on all apparel
+            if (pawn.apparel != null)
+            {
+                List<Apparel> wornApparel = new List<Apparel>(pawn.apparel.WornApparel);
+                for (int i = wornApparel.Count - 1; i >= 0; i--)
+                {
+                    if (wornApparel[i].def.apparel.CoversBodyPart(part))
+                    {
+                        Thing armorThing = damageArmor ? wornApparel[i] : null;
+
+                        //Check for deflection
+                        if (Utility.ApplyArmor(ref damageAmount, ref pierceAmount, wornApparel[i].GetStatValue(deflectionStat, true), armorThing, damageDef))
+                        {
+                            deflected = true;
+                            if (damageDef != absorbDamageDef)
+                            {
+                                damageDef = absorbDamageDef;
+                                deflectionStat = damageDef.armorCategory.DeflectionStat();
+                                i++;
+                            }
+                        }
+                        if (damageAmount < 0.001)
+                        {
+                            return 0;
+                        }
+                    }
+                }
+            }
+            //Check for pawn racial armor
+            if (Utility.ApplyArmor(ref damageAmount, ref pierceAmount, pawn.GetStatValue(deflectionStat, true), null, damageDef))
+            {
+                deflected = true;
+                if (damageAmount < 0.001)
+                {
+                    return 0;
+                }
+                damageDef = absorbDamageDef;
+                deflectionStat = damageDef.armorCategory.DeflectionStat();
+                Utility.ApplyArmor(ref damageAmount, ref pierceAmount, pawn.GetStatValue(deflectionStat, true), pawn, damageDef);
+            }
+            return Mathf.RoundToInt(damageAmount);
+        }
+
+        /// <summary>
+        /// For use with misc DamageWorker functions
+        /// </summary>
+        public static int GetAfterArmorDamage(Pawn pawn, int amountInt, BodyPartRecord part, DamageInfo dinfo)
+        {
+            bool flag = false;
+            return Utility.GetAfterArmorDamage(pawn, amountInt, part, dinfo, false, ref flag);
+        }
+
+        private static bool ApplyArmor(ref float damAmount, ref float pierceAmount, float armorRating, Thing armorThing, DamageDef damageDef)
+        {
+            float originalDamage = damAmount;
+            bool deflected = false;
+            float penetrationChance = Mathf.Clamp((pierceAmount - armorRating) * 4, 0, 1);
+
+            //Shot is deflected
+            if (penetrationChance == 0 || Rand.Value > penetrationChance)
+            {
+                deflected = true;
+            }
+            //Damage calculations
+            damAmount *= 1 - Mathf.Clamp(2 * armorRating - pierceAmount, 0, 1);
+
+            //Damage armor
+            if (armorThing != null)
+            {
+                float absorbedDamage = 0f;
+                if (damageDef == absorbDamageDef)
+                {
+                    absorbedDamage = (originalDamage - damAmount) * (1 + pierceAmount);
+                }
+                else
+                {
+                    absorbedDamage = originalDamage * Mathf.Max(0.3f, (1 - pierceAmount));
+                }
+                if (armorThing as Pawn == null)
+                {
+                    armorThing.TakeDamage(new DamageInfo(damageDef, Mathf.CeilToInt(absorbedDamage), null, null, null));
+                }
+                else
+                {
+                    damAmount += absorbedDamage;
+                }
+            }
+
+            pierceAmount *= Mathf.Max(0, 1 - armorRating);
+            return deflected;
+        }
+
     }
 }

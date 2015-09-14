@@ -11,7 +11,6 @@ namespace Combat_Realism
 {
     public abstract class ProjectileCR : ThingWithComps
     {
-        private const float MinFreeInterceptDistance = 4f;
         protected Vector3 origin;
         protected Vector3 destination;
         protected Thing assignedTarget;
@@ -43,7 +42,7 @@ namespace Combat_Realism
         {
             get
             {
-            	int num = Mathf.RoundToInt((float)((this.origin - this.destination).magnitude / (Math.Cos(this.shotAngle) * this.def.projectile.speed / 100f)));
+            	int num = Mathf.RoundToInt((float)((this.origin - this.destination).magnitude / (Math.Cos(this.shotAngle) * this.shotSpeed / 100f)));
                 if (num < 1)
                 {
                     num = 1;
@@ -84,15 +83,16 @@ namespace Combat_Realism
         //New variables
         public float shotAngle = 0f;
         public float shotHeight = 0f;
-        protected float downedHitFactor = 0.2f;
-        
-        private float Distance
+        public float shotSpeed = -1f;
+        private float distanceFromOrigin
         {
         	get
         	{
-        		return (this.destination - this.origin).magnitude;
+                Vector3 currentPos = Vector3.Scale(this.ExactPosition, new Vector3(1,0,1));
+                return (float)((currentPos - this.origin).magnitude);
         	}
         }
+
         
         /*
          * *** End of class variables ***
@@ -119,19 +119,24 @@ namespace Combat_Realism
             //Here be new variables
             Scribe_Values.LookValue<float>(ref this.shotAngle, "shotAngle", 0f, true);
             Scribe_Values.LookValue<float>(ref this.shotAngle, "shotHeight", 0f, true);
+            Scribe_Values.LookValue<float>(ref this.shotSpeed, "shotSpeed", 0f, true);
         }
 
         public float ProjectileHeight(float zeroheight, float distance, float angle, float velocity)
         {
-			float gravity = 9.8f;
-			float height = (float)(zeroheight + (distance * Math.Tan(angle)) - (gravity * Math.Pow(distance, 2)) / (2 * Math.Pow(velocity * Math.Cos(angle), 2)));
+            const float gravity = Utility.gravityConst;
+			float height = (float)(zeroheight + ((distance * Math.Tan(angle)) - (gravity * Math.Pow(distance, 2)) / (2 * Math.Pow(velocity * Math.Cos(angle), 2))));
         	
         	return height;
         }
         
         //Added new calculations for downed pawns, destination
-        public void Launch(Thing launcher, Vector3 origin, TargetInfo targ, Thing equipment = null)
+        public virtual void Launch(Thing launcher, Vector3 origin, TargetInfo targ, Thing equipment = null)
         {
+            if (this.shotSpeed < 0)
+            {
+                this.shotSpeed = this.def.projectile.speed;
+            }
             this.launcher = launcher;
             this.origin = origin;
             if (equipment != null)
@@ -231,7 +236,7 @@ namespace Combat_Realism
             {
                 return false;
             }
-            List<Thing> mainThingList = Find.ThingGrid.ThingsListAt(cell);
+            List<Thing> mainThingList = new List<Thing>(Find.ThingGrid.ThingsListAt(cell));
 
             //Find pawns in adjacent cells and append them to main list
             List<IntVec3> adjList = new List<IntVec3>();
@@ -252,21 +257,16 @@ namespace Combat_Realism
             {
                 if (adjList[i].InBounds() && !adjList[i].Equals(cell))
                 {
-                    List<Thing> thingList = Find.ThingGrid.ThingsListAt(adjList[i]);
-                    for (int j = 0; j < thingList.Count; j++)
-                    {
-                        if (thingList[j].def.category == ThingCategory.Pawn && !mainThingList.Contains(thingList[j]))
-                        {
-                            mainThingList.Add(thingList[j]);
-                        }
-                    }
+                    List<Thing> thingList = new List<Thing>(Find.ThingGrid.ThingsListAt(adjList[i]));
+                    var pawns = thingList.Where(thing => thing.def.category == ThingCategory.Pawn && !mainThingList.Contains(thing)).ToList();
+                    mainThingList.AddRange(pawns);
                 }
             }
 
             //Check for entries first so we avoid doing costly height calculations
             if (mainThingList.Count > 0)
             {
-                float height = ProjectileHeight(this.shotHeight, this.Distance, this.shotAngle, this.def.projectile.speed);
+                float height = ProjectileHeight(this.shotHeight, this.distanceFromOrigin, this.shotAngle, this.shotSpeed);
                 for (int i = 0; i < mainThingList.Count; i++)
                 {
                     Thing thing = mainThingList[i];
@@ -284,8 +284,7 @@ namespace Combat_Realism
                     //Checking for pawns/cover
                     else if (thing.def.category == ThingCategory.Pawn || (this.ticksToImpact < this.StartingTicksToImpact / 2 && thing.def.fillPercent > 0)) //Need to check for fillPercent here or else will be impacting things like motes, etc.
                     {
-                        bool impacted = this.ImpactThroughBodySize(thing, height);
-                        return impacted;
+                        return this.ImpactThroughBodySize(thing, height);
                     }
                 }
             }
@@ -319,7 +318,7 @@ namespace Combat_Realism
             }
             if (thing.def.fillPercent > 0 || thing.def.Fillage == FillCategory.Full)
             {
-            	if (height < thing.def.fillPercent || thing.def.Fillage == FillCategory.Full)
+                if (height < Utility.GetCollisionHeight(thing) || thing.def.Fillage == FillCategory.Full)
             	{
             		this.Impact(thing);
             		return true;
@@ -346,7 +345,7 @@ namespace Combat_Realism
             //Modified
             if (this.assignedTarget != null && this.assignedTarget.Position == this.Position)	//it was aimed at something and that something is still there
             {
-                this.ImpactThroughBodySize(this.assignedTarget, ProjectileHeight(this.shotHeight, this.Distance, this.shotAngle, this.def.projectile.speed));
+                this.ImpactThroughBodySize(this.assignedTarget, ProjectileHeight(this.shotHeight, this.distanceFromOrigin, this.shotAngle, this.shotSpeed));
                 return;
             }
             else
@@ -354,11 +353,11 @@ namespace Combat_Realism
                 Thing thing = Find.ThingGrid.ThingAt(base.Position, ThingCategory.Pawn);
                 if (thing != null)
                 {
-                    this.ImpactThroughBodySize(thing, ProjectileHeight(this.shotHeight, this.Distance, this.shotAngle, this.def.projectile.speed));
+                    this.ImpactThroughBodySize(thing, ProjectileHeight(this.shotHeight, this.distanceFromOrigin, this.shotAngle, this.shotSpeed));
                     return;
                 }
                 List<Thing> list = Find.ThingGrid.ThingsListAt(base.Position);
-                float height = (list.Count > 0) ? ProjectileHeight(this.shotHeight, this.Distance, this.shotAngle, this.def.projectile.speed) : 0;
+                float height = (list.Count > 0) ? ProjectileHeight(this.shotHeight, this.distanceFromOrigin, this.shotAngle, this.shotSpeed) : 0;
                 if (height > 0) {
 	                for (int i = 0; i < list.Count; i++)
 	                {
