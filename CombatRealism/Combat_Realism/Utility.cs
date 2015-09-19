@@ -173,7 +173,7 @@ namespace Combat_Realism
                 }
                 else
                 {
-                    absorbedDamage = originalDamage * Mathf.Max(0.3f, (1 - pierceAmount));
+                    absorbedDamage = originalDamage * Mathf.Min(pierceAmount, 1f);
                 }
                 if (armorThing as Pawn == null)
                 {

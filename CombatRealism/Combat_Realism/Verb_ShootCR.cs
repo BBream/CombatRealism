@@ -14,6 +14,8 @@ namespace Combat_Realism
 		private float shotAngle;
 		private float shotHeight;
 
+        private const float shotHeightFactor = 0.85f;   //The height at which pawns hold their guns
+
         private float _shotSpeed = -1;
         private float shotSpeed
         {
@@ -190,7 +192,7 @@ namespace Combat_Realism
             this.shotHeight = Utility.GetCollisionHeight(this.caster);
             if (this.caster as Pawn != null)
             {
-                this.shotHeight *= 0.85f;
+                this.shotHeight *= shotHeightFactor;
             }
             heightDifference -= this.shotHeight;
 	        skewVec += new Vector2(0, GetShotAngle(this.shotSpeed, shotVec.magnitude, heightDifference) * (180 / (float)Math.PI));
@@ -297,15 +299,12 @@ namespace Combat_Realism
             targetLoc.Scale(new Vector3(1, 0, 1));
             Thing targetThing = GridsUtility.GetEdifice(targetLoc.ToIntVec3());
             cover = GridsUtility.GetCover((targetLoc - (targetLoc - sourceLoc).normalized).ToIntVec3());
-            if (!this.verbProps.projectileDef.projectile.flyOverhead 
-                && cover != null 
-                && !(targetThing != null && cover.Equals(targetThing)) 
+            return (!this.verbProps.projectileDef.projectile.flyOverhead
+                && cover != null
+                && targetThing != null 
+                && !cover.Equals(targetThing)   //Target must not be cover, necessary for large structures
                 && cover.def.Fillage != FillCategory.Full
-                && cover.def.category != ThingCategory.Plant)
-            {
-                return true;
-            }
-            return false;
+                && cover.def.category != ThingCategory.Plant);  //Don't care about trees
         }
 
         /// <summary>
@@ -333,7 +332,7 @@ namespace Combat_Realism
                     Pawn casterPawn = this.caster as Pawn;
                     if (casterPawn != null)
                     {
-                        shotHeight *= 0.75f;
+                        shotHeight *= shotHeightFactor;
                     }
                     if (shotHeight <= Utility.GetCollisionHeight(coverShoot))
                     {

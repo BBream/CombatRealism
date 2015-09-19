@@ -70,6 +70,7 @@
   <ItemGroup>
     <Compile Include="Combat_Realism\BulletCR.cs" />
     <Compile Include="Combat_Realism\CompAim.cs" />
+    <Compile Include="Combat_Realism\CompSuppressable.cs" />
     <Compile Include="Combat_Realism\CompAP.cs" />
     <Compile Include="Combat_Realism\CompCharges.cs" />
     <Compile Include="Combat_Realism\CompPropertiesCustom.cs" />
