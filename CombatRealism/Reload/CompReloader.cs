@@ -12,6 +12,7 @@ namespace Combat_Realism
     {
         public int roundPerMag = 1;
         public int reloadTick = 300;
+        public bool throwMote = true;
     }
 
     public class CompReloader : CommunityCoreLibrary.CompRangedGizmoGiver
@@ -71,8 +72,15 @@ namespace Combat_Realism
                 return;
             }
 #endif
-            MoteThrower.ThrowText( Wielder.Position.ToVector3Shifted(), "CR_ReloadingMote".Translate() );
-            var job = new Job( DefDatabase< JobDef >.GetNamed( "ReloadWeapon" ), Wielder, parent );
+            if ( reloaderProp.throwMote )
+            {
+                MoteThrower.ThrowText( Wielder.Position.ToVector3Shifted(), "CR_ReloadingMote".Translate() );
+            }
+            var job = new Job( DefDatabase< JobDef >.GetNamed( "ReloadWeapon" ), Wielder, parent )
+            {
+                playerForced = true
+                
+            };
 
             if ( Wielder.drafter != null )
             {
@@ -86,8 +94,11 @@ namespace Combat_Realism
     
         public void FinishReload()
         {
-            parent.def.soundInteract.PlayOneShot(SoundInfo.InWorld(parent.Position));
-            MoteThrower.ThrowText( Wielder.Position.ToVector3Shifted(), "CR_ReloadedMote".Translate() );
+            parent.def.soundInteract.PlayOneShot(SoundInfo.InWorld(Wielder.Position));
+            if ( reloaderProp.throwMote )
+            {
+                MoteThrower.ThrowText(Wielder.Position.ToVector3Shifted(), "CR_ReloadedMote".Translate());
+            }
             count = reloaderProp.roundPerMag;
             needReload = false;
         }
