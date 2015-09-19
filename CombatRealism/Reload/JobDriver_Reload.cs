@@ -16,9 +16,13 @@ namespace Combat_Realism
         protected override IEnumerable< Toil > MakeNewToils()
         {
             this.FailOnBroken( TargetIndex.A );
-
-            //Toil of do-nothing
-            pawn.stances.SetStance(new Stance_Cooldown(CompReloader.reloaderProp.reloadTick, TargetInfo.Invalid));
+            
+            //Toil of do-nothing		
+            var waitToil = new Toil();
+            waitToil.initAction = () => waitToil.actor.pather.StopDead();
+            waitToil.defaultCompleteMode = ToilCompleteMode.Delay;
+            waitToil.defaultDuration = CompReloader.reloaderProp.reloadTick;
+            yield return waitToil;
 
             //Actual reloader
             var reloadToil = new Toil();

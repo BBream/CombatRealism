@@ -59,12 +59,6 @@ namespace Combat_Realism
             count = 0;
             needReload = true;
 #if DEBUG
-            if ( CompEquippable == null )
-            {
-                Log.ErrorOnce( "CompEquippable of " + parent + " is null!", 7381888 );
-                FinishReload();
-                return;
-            }
             if ( Wielder == null )
             {
                 Log.ErrorOnce( "Wielder of " + parent + " is null!", 7381889 );
@@ -76,10 +70,10 @@ namespace Combat_Realism
             {
                 MoteThrower.ThrowText( Wielder.Position.ToVector3Shifted(), "CR_ReloadingMote".Translate() );
             }
+
             var job = new Job( DefDatabase< JobDef >.GetNamed( "ReloadWeapon" ), Wielder, parent )
             {
                 playerForced = true
-                
             };
 
             if ( Wielder.drafter != null )
@@ -101,11 +95,6 @@ namespace Combat_Realism
             }
             count = reloaderProp.roundPerMag;
             needReload = false;
-        }
-
-        public override void PostDraw()
-        {
-            // TODO: Reload indicator?
         }
 
         private class GizmoAmmoStatus : Command
