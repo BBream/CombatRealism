@@ -34,7 +34,7 @@ namespace Combat_Realism
         /// <returns>True if parameters are in order, false otherwise</returns>
         public bool getParameters()
         {
-            Combat_Realism.ThingDef_ProjectileFrag projectileDef = this.def as Combat_Realism.ThingDef_ProjectileFrag;
+            ThingDef_ProjectileFrag projectileDef = this.def as ThingDef_ProjectileFrag;
             if (projectileDef.fragAmountSmall + projectileDef.fragAmountMedium + projectileDef.fragAmountLarge > 0
                 && projectileDef.fragRange > 0
                 && projectileDef.fragProjectileSmall != null

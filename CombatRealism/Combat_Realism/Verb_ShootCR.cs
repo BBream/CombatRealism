@@ -204,7 +204,7 @@ namespace Combat_Realism
             {
                 shooterAmplitude *= cpCustomGet.shooterVariation;
             }
-	        Vector2 shooterVec = new Vector2(shooterAmplitude * (float)Math.Sin(ticks * 2.2), 0.04f * shooterAmplitude * (float)Math.Sin(ticks * 1.65));
+	        Vector2 shooterVec = new Vector2(shooterAmplitude * (float)Math.Sin(ticks * 2.2), shooterAmplitude * (float)Math.Sin(ticks * 1.65));
 	        skewVec += shooterVec;
             
             	// ----------------------------------- STEP 4: Mechanical variation
@@ -265,27 +265,30 @@ namespace Combat_Realism
             }
 
             //Case switch to handle walking, jogging, etc.
-            switch (pawn.CurJob.locomotionUrgency)
+            if (pawn.CurJob != null)
             {
-                case LocomotionUrgency.Amble:
-                    movePerTick *= 3;
-                    if (movePerTick < 60)
-                    {
-                        movePerTick = 60;
-                    }
-                    break;
-                case LocomotionUrgency.Walk:
-                    movePerTick *= 2;
-                    if (movePerTick < 50)
-                    {
-                        movePerTick = 50;
-                    }
-                    break;
-                case LocomotionUrgency.Jog:
-                    break;
-                case LocomotionUrgency.Sprint:
-                    movePerTick = Mathf.RoundToInt(movePerTick * 0.75f);
-                    break;
+                switch (pawn.CurJob.locomotionUrgency)
+                {
+                    case LocomotionUrgency.Amble:
+                        movePerTick *= 3;
+                        if (movePerTick < 60)
+                        {
+                            movePerTick = 60;
+                        }
+                        break;
+                    case LocomotionUrgency.Walk:
+                        movePerTick *= 2;
+                        if (movePerTick < 50)
+                        {
+                            movePerTick = 50;
+                        }
+                        break;
+                    case LocomotionUrgency.Jog:
+                        break;
+                    case LocomotionUrgency.Sprint:
+                        movePerTick = Mathf.RoundToInt(movePerTick * 0.75f);
+                        break;
+                }
             }
             return 60 / movePerTick;
         }

@@ -299,6 +299,19 @@ namespace Combat_Realism
             Pawn pawn = thing as Pawn;
             if (pawn != null)
             {
+                //Add suppression
+                CompSuppressable compSuppressable = pawn.TryGetComp<CompSuppressable>();
+                if (compSuppressable != null)
+                {
+                    float suppressionAmount = this.def.projectile.damageAmountBase;
+                    CompAP compAP = this.TryGetComp<CompAP>();
+                    if (compAP != null)
+                    {
+                        suppressionAmount *= 1 - Mathf.Clamp(compSuppressable.parentArmor - compAP.props.armorPenetration, 0, 1);
+                    }
+                    compSuppressable.AddSuppression(suppressionAmount, this.origin.ToIntVec3());
+                }
+
                 //Check horizontal distance
                 Vector3 dest = this.destination;
                 Vector3 orig = this.origin;
@@ -381,11 +394,11 @@ namespace Combat_Realism
         //Unmodified
         public override void Tick()
         {
-            Log.Message("Calculating height with params: height: " + this.shotHeight.ToString() 
+            /*Log.Message("Calculating height with params: height: " + this.shotHeight.ToString() 
                 + ", distance: " + this.distanceFromOrigin.ToString() 
                 + ", angle: " + this.shotAngle.ToString() 
                 + ", speed: " + this.shotSpeed.ToString() 
-                + " = " + GetProjectileHeight(this.shotHeight, this.distanceFromOrigin, this.shotAngle, this.shotSpeed).ToString());
+                + " = " + GetProjectileHeight(this.shotHeight, this.distanceFromOrigin, this.shotAngle, this.shotSpeed).ToString());*/
             base.Tick();
             if (this.landed)
             {

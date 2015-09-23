@@ -9,82 +9,202 @@ using UnityEngine;
 
 namespace Combat_Realism
 {
-    class CompProperties_Supressable : CompProperties
+    class CompSuppressable : ThingComp
     {
-        public float suppressionThreshold = 0f;
 
-        public CompProperties_Supressable()
-        {
-            this.compClass = typeof(CompProperties_Supressable);
-        }
-    }
+        // --------------- Global constants ---------------
 
-    class CompSupressable : ThingComp
-    {
-        private float currentSuppression = 0f;
-        private bool isSuppressed = false;
+        public const float minSuppressionDist = 10f;    //Minimum distance to be suppressed from, so melee won't be suppressed if it closes within this distance
+        private const float maxSuppression = 500f;    //Cap to prevent suppression from building indefinitely
+        private const float suppressionDecayRate = 50f; //How much suppression decays per second
+        private const int ticksPerMote = 150;   //How many ticks between throwing a mote
 
-        // --------------- Suppression threshold stuff ---------------
-        private float baseSuppressionThreshold = 0f;
-        private float suppressionThreshold
+        // --------------- Location calculations ---------------
+
+        /*
+         * We track the initial location from which a pawn was suppressed and the total amount of suppression coming from that location separately.
+         * That way if suppression stops coming from location A but keeps coming from location B the location will get updated without bouncing 
+         * pawns or having to track fire coming from multiple locations
+         */
+        private IntVec3 suppressorLocInt;
+        public IntVec3 suppressorLoc
         {
             get
             {
-                //Get pawn armor value
+                return this.suppressorLocInt;
+            }
+        }
+        private float locSuppressionAmount = 0f;
+
+        // --------------- Suppression calculations ---------------
+        private float currentSuppressionInt = 0f;
+        public float currentSuppression
+        {
+            get
+            {
+                return this.currentSuppressionInt;
+            }
+        }
+        public float parentArmor
+        {
+            get
+            {
                 float armorValue = 0f;
                 Pawn pawn = this.parent as Pawn;
                 if (pawn != null)
                 {
-                    foreach (Apparel apparel in pawn.apparel.WornApparel)
+                    //Get most protective piece of armor
+                    if (pawn.apparel.WornApparel != null && pawn.apparel.WornApparel.Count > 0)
                     {
-                        float apparelArmor = apparel.GetStatValue(StatDefOf.ArmorRating_Sharp, true);
-                        if (apparelArmor > armorValue)
+                        List<Apparel> wornApparel = new List<Apparel>(pawn.apparel.WornApparel);
+                        foreach (Apparel apparel in wornApparel)
                         {
-                            armorValue = apparelArmor;
+                            float apparelArmor = apparel.GetStatValue(StatDefOf.ArmorRating_Sharp, true);
+                            if (apparelArmor > armorValue)
+                            {
+                                armorValue = apparelArmor;
+                            }
                         }
                     }
                 }
                 else
                 {
-                    Log.Warning("Tried to get suppression threshold of non-pawn");
+                    Log.Error("Tried to get parent armor of non-pawn");
                 }
-                return baseSuppressionThreshold * armorValue;
+                return armorValue;
             }
         }
-
-        public override void Initialize(CompProperties props)
+        private float suppressionThreshold
         {
-            base.Initialize(props);
-            CompProperties_Supressable cprops = props as CompProperties_Supressable;
-            if (cprops != null)
+            get
             {
-                this.baseSuppressionThreshold = cprops.suppressionThreshold;
+                float threshold = 0f;
+                Pawn pawn = this.parent as Pawn;
+                if (pawn != null)
+                {
+                    //Get morale
+                    float hardBreakThreshold = pawn.mindState != null && pawn.mindState.breaker != null ? pawn.mindState.breaker.HardBreakThreshold : 0f;
+                    float currentMood = pawn.needs != null && pawn.needs.mood != null ? pawn.needs.mood.CurLevel : 0.5f;
+                    threshold = Mathf.Max(0, (currentMood - hardBreakThreshold));
+                }
+                else
+                {
+                    Log.Error("Tried to get suppression threshold of non-pawn");
+                }
+                return threshold * maxSuppression * 0.5f;
             }
         }
 
-        public void AddSuppression(float amount)
+        public bool isSuppressed = false;
+        public bool isHunkering
         {
-            this.currentSuppression += amount;
-            if (!this.isSuppressed && this.currentSuppression > this.suppressionThreshold)
+            get
             {
-                MoteThrower.ThrowText(this.parent.Position.ToVector3Shifted(), "Suppressed");
-                this.BeSuppressed();
+                if (this.currentSuppressionInt > this.suppressionThreshold * 2)
+                {
+                    if (this.isSuppressed)
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        Log.Warning("Hunkering without suppression, this should never happen");
+                    }
+                }
+                return false;
             }
         }
 
-        public override void CompTickRare()
+        // --------------- Public functions ---------------
+        public override void PostExposeData()
         {
-            base.CompTickRare();
-            this.currentSuppression--;
-            if (!this.isSuppressed && this.currentSuppression > this.suppressionThreshold)
+            base.PostExposeData();
+            Scribe_Values.LookValue<float>(ref currentSuppressionInt, "currentSuppression", 0f);
+            Scribe_Values.LookValue<IntVec3>(ref suppressorLocInt, "suppressorLoc");
+            Scribe_Values.LookValue<float>(ref locSuppressionAmount, "locSuppression", 0f);
+        }
+
+        public void AddSuppression(float amount, IntVec3 origin)
+        {
+            //Add suppression to global suppression counter
+            this.currentSuppressionInt += amount;
+            if (this.currentSuppressionInt > maxSuppression)
             {
-                this.BeSuppressed();
+                this.currentSuppressionInt = maxSuppression;
+            }
+
+            //Add suppression to current suppressor location if appropriate
+            if (this.suppressorLocInt == origin)
+            {
+                this.locSuppressionAmount += amount;
+            }
+            else if (this.locSuppressionAmount < this.suppressionThreshold)
+            {
+                this.suppressorLocInt = origin;
+                this.locSuppressionAmount = this.currentSuppressionInt;
+            }
+
+            //Assign suppressed status and interrupt activity if necessary
+            if (!this.isSuppressed && this.currentSuppressionInt > this.suppressionThreshold)
+            {
+                this.isSuppressed = true;
+                Pawn pawn = this.parent as Pawn;
+                if (pawn != null)
+                {
+                    if (pawn.jobs != null)
+                    {
+                        pawn.jobs.StopAll(false);
+                    }
+                }
+                else
+                {
+                    Log.Error("Trying to suppress non-pawn, this should never happen");
+                }
             }
         }
 
-        private void BeSuppressed()
+        public override void CompTick()
         {
-            //TODO
+            base.CompTick();
+
+            //Apply decay once per second
+            if (Gen.IsHashIntervalTick(this.parent, 60))
+            {
+                //Decay global suppression
+                if (this.currentSuppressionInt > suppressionDecayRate)
+                {
+                    this.currentSuppressionInt -= suppressionDecayRate;
+
+                    //Check if pawn is still suppressed
+                    if (this.isSuppressed && this.currentSuppressionInt <= this.suppressionThreshold)
+                    {
+                        this.isSuppressed = false;
+                    }
+                }
+                else if (this.currentSuppressionInt > 0)
+                {
+                    this.currentSuppressionInt = 0;
+                    this.isSuppressed = false;
+                }
+
+                //Decay location suppression
+                if (this.locSuppressionAmount > suppressionDecayRate)
+                {
+                    this.locSuppressionAmount -= suppressionDecayRate;
+                }
+                else if (this.locSuppressionAmount > 0)
+                {
+                    this.locSuppressionAmount = 0;
+                }
+            }
+            //Throw mote at set interval
+            if (Gen.IsHashIntervalTick(this.parent, ticksPerMote))
+            {
+                if (this.isSuppressed)
+                {
+                    MoteThrower.ThrowText(this.parent.Position.ToVector3Shifted(), "Suppressed: " + this.currentSuppressionInt.ToString());
+                }
+            }
         }
     }
 }
