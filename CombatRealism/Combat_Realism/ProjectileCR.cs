@@ -190,8 +190,10 @@ namespace Combat_Realism
             {
                 return this.CheckForFreeIntercept(newPos);
             }
+            //Check for minimum collision distance
             float distToTarget = this.assignedTarget != null ? (this.assignedTarget.DrawPos - this.origin).MagnitudeHorizontal() : (this.destination - this.origin).MagnitudeHorizontal();
-            if (distToTarget <= 1f ? this.origin.ToIntVec3().DistanceToSquared(newPos) > 1f : this.origin.ToIntVec3().DistanceToSquared(newPos) > Mathf.Min(12f, distToTarget / 2))
+            if (this.def.projectile.alwaysFreeIntercept 
+                || distToTarget <= 1f ? this.origin.ToIntVec3().DistanceToSquared(newPos) > 1f : this.origin.ToIntVec3().DistanceToSquared(newPos) > Mathf.Min(12f, distToTarget / 2))
             {
 
                 Vector3 currentExactPos = lastExactPos;
@@ -230,9 +232,11 @@ namespace Combat_Realism
         //Added collision detection for cover objects, changed pawn collateral chances
         private bool CheckForFreeIntercept(IntVec3 cell)
         {
+            //Check for minimum collision distance
             float distFromOrigin = (cell.ToVector3Shifted() - this.origin).MagnitudeHorizontal();
             float distToTarget = this.assignedTarget != null ? (this.assignedTarget.DrawPos - this.origin).MagnitudeHorizontal() : (this.destination - this.origin).MagnitudeHorizontal();
-            if (distToTarget <= 1f ? distFromOrigin < 1f : distFromOrigin < Mathf.Min(12f, distToTarget / 2))
+            if (!this.def.projectile.alwaysFreeIntercept 
+                && distToTarget <= 1f ? distFromOrigin < 1f : distFromOrigin < Mathf.Min(12f, distToTarget / 2))
             {
                 return false;
             }
@@ -305,10 +309,8 @@ namespace Combat_Realism
                 {
                     float suppressionAmount = this.def.projectile.damageAmountBase;
                     CompAP compAP = this.TryGetComp<CompAP>();
-                    if (compAP != null)
-                    {
-                        suppressionAmount *= 1 - Mathf.Clamp(compSuppressable.parentArmor - compAP.props.armorPenetration, 0, 1);
-                    }
+                    float penetrationAmount = compAP == null ? 0f : compAP.props.armorPenetration;
+                    suppressionAmount *= 1 - Mathf.Clamp(compSuppressable.parentArmor - penetrationAmount, 0, 1);
                     compSuppressable.AddSuppression(suppressionAmount, this.origin.ToIntVec3());
                 }
 

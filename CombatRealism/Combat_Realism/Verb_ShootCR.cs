@@ -9,6 +9,10 @@ namespace Combat_Realism
 {
 	public class Verb_ShootCR : Verse.Verb_Shoot
 	{
+        //Cover check constants
+        private const float distToCheckForCover = 3f;    //How many cells to raycast on the cover check
+        private const float segmentLength = 0.2f;    //How long a single raycast segment is
+
         private float estimatedTargetDistance;  //Stores estimates target distance for each burst, so each burst shot uses the same
 		private const float accuracyExponent = -2f;
 		private float shotAngle;
@@ -179,7 +183,7 @@ namespace Combat_Realism
             float heightDifference = 0;
             float targetableHeight = Utility.GetCollisionHeight(this.currentTarget.Thing);
             Thing cover;
-	        if (this.GetCoverBetween(sourceLoc, targetLoc, out cover))
+	        if (this.GetPartialCoverBetween(sourceLoc, targetLoc, out cover))
             {
                 targetableHeight += Utility.GetCollisionHeight(cover);
                 targetableHeight *= 0.5f;   //Optimal hit level is halfway
@@ -294,18 +298,49 @@ namespace Combat_Realism
         }
 
         /// <summary>
-        /// Checks for cover along the flight path of the bullet, doesn't check for walls, only intended for cover with partial fillPercent
+        /// Checks for cover along the flight path of the bullet, doesn't check for walls or plants, only intended for cover with partial fillPercent
         /// </summary>
-        private bool GetCoverBetween(Vector3 sourceLoc, Vector3 targetLoc, out Thing cover)
+        private bool GetPartialCoverBetween(Vector3 sourceLoc, Vector3 targetLoc, out Thing cover)
         {
+            //Sanity check
+            if (this.verbProps.projectileDef.projectile.flyOverhead)
+            {
+                cover = null;
+                return false;
+            }
+
             sourceLoc.Scale(new Vector3(1, 0, 1));
             targetLoc.Scale(new Vector3(1, 0, 1));
+
+            //Calculate segment vector and segment amount
+            Vector3 shotVec = sourceLoc - targetLoc;    //Vector from target to source
+            Vector3 segmentVec = shotVec.normalized * segmentLength;
+            float distToCheck = Mathf.Min(distToCheckForCover, shotVec.magnitude);  //The distance to raycast
+            float numSegments = distToCheck / segmentLength;
+
+            //Raycast accross all segments to check for cover
+            List<IntVec3> checkedCells = new List<IntVec3>();
             Thing targetThing = GridsUtility.GetEdifice(targetLoc.ToIntVec3());
-            cover = GridsUtility.GetCover((targetLoc - (targetLoc - sourceLoc).normalized).ToIntVec3());
-            return (!this.verbProps.projectileDef.projectile.flyOverhead
-                && cover != null
-                && targetThing != null 
-                && !cover.Equals(targetThing)   //Target must not be cover, necessary for large structures
+            Thing newCover = null;
+            for (int i = 0; i <= numSegments; i++)
+            {
+                IntVec3 cell = (targetLoc + segmentVec * i).ToIntVec3();
+                if (!checkedCells.Contains(cell))
+                {
+                    //Cover check, if cell has cover compare fillPercent and get the highest piece of cover, ignore if cover is the target (e.g. solar panels, crashed ship, etc)
+                    Thing coverAtCell = GridsUtility.GetCover(cell);
+                    if (coverAtCell != null 
+                        && (targetThing == null || !coverAtCell.Equals(targetThing)) 
+                        && (newCover == null || newCover.def.fillPercent < coverAtCell.def.fillPercent))
+                    {
+                        newCover = coverAtCell;
+                    }
+                }
+            }
+            cover = newCover;
+
+            //Report success if found cover that is not a wall or plant
+            return (cover != null
                 && cover.def.Fillage != FillCategory.Full
                 && cover.def.category != ThingCategory.Plant);  //Don't care about trees
         }
@@ -319,7 +354,7 @@ namespace Combat_Realism
             {
                 //Check if target is obstructed behind cover
                 Thing coverTarg;
-                if (this.GetCoverBetween(root.ToVector3Shifted(), targ.Cell.ToVector3Shifted(), out coverTarg))
+                if (this.GetPartialCoverBetween(root.ToVector3Shifted(), targ.Cell.ToVector3Shifted(), out coverTarg))
                 {
                     float targetHeight = Utility.GetCollisionHeight(targ.Thing);
                     if (targetHeight <= Utility.GetCollisionHeight(coverTarg))
@@ -329,7 +364,7 @@ namespace Combat_Realism
                 }
                 //Check if shooter is obstructed by cover
                 Thing coverShoot;
-                if (this.GetCoverBetween(targ.Cell.ToVector3Shifted(), root.ToVector3Shifted(), out coverShoot))
+                if (this.GetPartialCoverBetween(targ.Cell.ToVector3Shifted(), root.ToVector3Shifted(), out coverShoot))
                 {
                     float shotHeight = Utility.GetCollisionHeight(this.caster);
                     Pawn casterPawn = this.caster as Pawn;
@@ -358,10 +393,10 @@ namespace Combat_Realism
             {
                 return false;
             }
-            if (!this.CanHitTargetFrom(this.caster.Position, this.currentTarget))
+            /*if (!this.CanHitTargetFrom(this.caster.Position, this.currentTarget))
             {
                 return false;
-            }
+            }*/
             Vector3 casterExactPosition = this.caster.DrawPos;
             ProjectileCR projectile = (ProjectileCR)ThingMaker.MakeThing(this.verbProps.projectileDef, null);
             GenSpawn.Spawn(projectile, shootLine.Source);

@@ -81,6 +81,7 @@
     <Compile Include="Combat_Realism\JobGiver_RunForCover.cs" />
     <Compile Include="Combat_Realism\ProjectileCR.cs" />
     <Compile Include="Combat_Realism\ProjectileCR_Explosive.cs" />
+    <Compile Include="Combat_Realism\ThinkNode_ConditionalHunkering.cs" />
     <Compile Include="Combat_Realism\ThinkNode_ConditionalSuppressed.cs" />
     <Compile Include="Combat_Realism\ThoughtWorker_Suppressed.cs" />
     <Compile Include="Combat_Realism\Utility.cs" />
