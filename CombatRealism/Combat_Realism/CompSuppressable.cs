@@ -16,7 +16,7 @@ namespace Combat_Realism
 
         public const float minSuppressionDist = 10f;    //Minimum distance to be suppressed from, so melee won't be suppressed if it closes within this distance
         private const float maxSuppression = 300f;    //Cap to prevent suppression from building indefinitely
-        private const float suppressionDecayRate = 30f; //How much suppression decays per second
+        private const float suppressionDecayRate = 20f; //How much suppression decays per second
         private const int ticksPerMote = 150;   //How many ticks between throwing a mote
 
         // --------------- Location calculations ---------------
