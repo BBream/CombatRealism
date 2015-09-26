@@ -17,12 +17,11 @@ namespace Combat_Realism
         {
             this.FailOnBroken( TargetIndex.A );
             
-            //Toil of do-nothing
+            //Toil of do-nothing		
             var waitToil = new Toil();
             waitToil.initAction = () => waitToil.actor.pather.StopDead();
             waitToil.defaultCompleteMode = ToilCompleteMode.Delay;
             waitToil.defaultDuration = CompReloader.reloaderProp.reloadTick;
-
             yield return waitToil;
 
             //Actual reloader

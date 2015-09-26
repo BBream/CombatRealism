@@ -206,11 +206,11 @@ namespace Combat_Realism
             if (shotAbsorbed)
             {
                 result.deflected = true;
-                if (dinfo.Def.armorCategory != DamageArmorCategory.Blunt)
+                if (dinfo.Def != Utility.absorbDamageDef)
                 {
                     //Get outer parent of struck part
                     BodyPartRecord parentPart = exactPartFromDamageInfo;
-                    while (parentPart.parent != null && parentPart.depth != BodyPartDepth.Outside)
+                    while (parentPart != null && parentPart.parent != null && parentPart.depth != BodyPartDepth.Outside)
                     {
                         parentPart = parentPart.parent;
                     }

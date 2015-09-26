@@ -122,11 +122,11 @@ namespace Combat_Realism
             Scribe_Values.LookValue<float>(ref this.shotSpeed, "shotSpeed", 0f, true);
         }
 
-        public float ProjectileHeight(float zeroheight, float distance, float angle, float velocity)
+        public float GetProjectileHeight(float zeroheight, float distance, float angle, float velocity)
         {
             const float gravity = Utility.gravityConst;
 			float height = (float)(zeroheight + ((distance * Math.Tan(angle)) - (gravity * Math.Pow(distance, 2)) / (2 * Math.Pow(velocity * Math.Cos(angle), 2))));
-        	
+
         	return height;
         }
         
@@ -190,8 +190,10 @@ namespace Combat_Realism
             {
                 return this.CheckForFreeIntercept(newPos);
             }
+            //Check for minimum collision distance
             float distToTarget = this.assignedTarget != null ? (this.assignedTarget.DrawPos - this.origin).MagnitudeHorizontal() : (this.destination - this.origin).MagnitudeHorizontal();
-            if (distToTarget <= 1f ? this.origin.ToIntVec3().DistanceToSquared(newPos) > 1f : this.origin.ToIntVec3().DistanceToSquared(newPos) > Mathf.Min(12f, distToTarget / 2))
+            if (this.def.projectile.alwaysFreeIntercept 
+                || distToTarget <= 1f ? this.origin.ToIntVec3().DistanceToSquared(newPos) > 1f : this.origin.ToIntVec3().DistanceToSquared(newPos) > Mathf.Min(12f, distToTarget / 2))
             {
 
                 Vector3 currentExactPos = lastExactPos;
@@ -230,9 +232,11 @@ namespace Combat_Realism
         //Added collision detection for cover objects, changed pawn collateral chances
         private bool CheckForFreeIntercept(IntVec3 cell)
         {
+            //Check for minimum collision distance
             float distFromOrigin = (cell.ToVector3Shifted() - this.origin).MagnitudeHorizontal();
             float distToTarget = this.assignedTarget != null ? (this.assignedTarget.DrawPos - this.origin).MagnitudeHorizontal() : (this.destination - this.origin).MagnitudeHorizontal();
-            if (distToTarget <= 1f ? distFromOrigin < 1f : distFromOrigin < Mathf.Min(12f, distToTarget / 2))
+            if (!this.def.projectile.alwaysFreeIntercept 
+                && distToTarget <= 1f ? distFromOrigin < 1f : distFromOrigin < Mathf.Min(12f, distToTarget / 2))
             {
                 return false;
             }
@@ -266,7 +270,7 @@ namespace Combat_Realism
             //Check for entries first so we avoid doing costly height calculations
             if (mainThingList.Count > 0)
             {
-                float height = ProjectileHeight(this.shotHeight, this.distanceFromOrigin, this.shotAngle, this.shotSpeed);
+                float height = GetProjectileHeight(this.shotHeight, this.distanceFromOrigin, this.shotAngle, this.shotSpeed);
                 for (int i = 0; i < mainThingList.Count; i++)
                 {
                     Thing thing = mainThingList[i];
@@ -299,6 +303,17 @@ namespace Combat_Realism
             Pawn pawn = thing as Pawn;
             if (pawn != null)
             {
+                //Add suppression
+                CompSuppressable compSuppressable = pawn.TryGetComp<CompSuppressable>();
+                if (compSuppressable != null)
+                {
+                    float suppressionAmount = this.def.projectile.damageAmountBase;
+                    CompAP compAP = this.TryGetComp<CompAP>();
+                    float penetrationAmount = compAP == null ? 0f : compAP.props.armorPenetration;
+                    suppressionAmount *= 1 - Mathf.Clamp(compSuppressable.parentArmor - penetrationAmount, 0, 1);
+                    compSuppressable.AddSuppression(suppressionAmount, this.origin.ToIntVec3());
+                }
+
                 //Check horizontal distance
                 Vector3 dest = this.destination;
                 Vector3 orig = this.origin;
@@ -345,7 +360,7 @@ namespace Combat_Realism
             //Modified
             if (this.assignedTarget != null && this.assignedTarget.Position == this.Position)	//it was aimed at something and that something is still there
             {
-                this.ImpactThroughBodySize(this.assignedTarget, ProjectileHeight(this.shotHeight, this.distanceFromOrigin, this.shotAngle, this.shotSpeed));
+                this.ImpactThroughBodySize(this.assignedTarget, GetProjectileHeight(this.shotHeight, this.distanceFromOrigin, this.shotAngle, this.shotSpeed));
                 return;
             }
             else
@@ -353,11 +368,11 @@ namespace Combat_Realism
                 Thing thing = Find.ThingGrid.ThingAt(base.Position, ThingCategory.Pawn);
                 if (thing != null)
                 {
-                    this.ImpactThroughBodySize(thing, ProjectileHeight(this.shotHeight, this.distanceFromOrigin, this.shotAngle, this.shotSpeed));
+                    this.ImpactThroughBodySize(thing, GetProjectileHeight(this.shotHeight, this.distanceFromOrigin, this.shotAngle, this.shotSpeed));
                     return;
                 }
                 List<Thing> list = Find.ThingGrid.ThingsListAt(base.Position);
-                float height = (list.Count > 0) ? ProjectileHeight(this.shotHeight, this.distanceFromOrigin, this.shotAngle, this.shotSpeed) : 0;
+                float height = (list.Count > 0) ? GetProjectileHeight(this.shotHeight, this.distanceFromOrigin, this.shotAngle, this.shotSpeed) : 0;
                 if (height > 0) {
 	                for (int i = 0; i < list.Count; i++)
 	                {
@@ -381,6 +396,11 @@ namespace Combat_Realism
         //Unmodified
         public override void Tick()
         {
+            /*Log.Message("Calculating height with params: height: " + this.shotHeight.ToString() 
+                + ", distance: " + this.distanceFromOrigin.ToString() 
+                + ", angle: " + this.shotAngle.ToString() 
+                + ", speed: " + this.shotSpeed.ToString() 
+                + " = " + GetProjectileHeight(this.shotHeight, this.distanceFromOrigin, this.shotAngle, this.shotSpeed).ToString());*/
             base.Tick();
             if (this.landed)
             {
