@@ -202,7 +202,7 @@ namespace Combat_Realism
             {
                 if (this.isSuppressed)
                 {
-                    MoteThrower.ThrowText(this.parent.Position.ToVector3Shifted(), "Suppressed: " + this.currentSuppressionInt.ToString());
+                    MoteThrower.ThrowText(this.parent.Position.ToVector3Shifted(), "CR_SuppressedMote".Translate());
                 }
             }
         }
