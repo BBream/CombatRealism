@@ -186,12 +186,8 @@ namespace Combat_Realism
 	        if (this.GetPartialCoverBetween(sourceLoc, targetLoc, out cover))
             {
                 targetableHeight += Utility.GetCollisionHeight(cover);
-                targetableHeight *= 0.5f;   //Optimal hit level is halfway
             }
-            else
-            {
-                targetableHeight *= 0.65f;  //Optimal hit level is center of mass
-            }
+            targetableHeight *= 0.5f;   //Optimal hit level is halfway
             heightDifference += targetableHeight;
             this.shotHeight = Utility.GetCollisionHeight(this.caster);
             if (this.caster as Pawn != null)
