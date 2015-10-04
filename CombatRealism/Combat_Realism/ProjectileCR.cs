@@ -84,12 +84,12 @@ namespace Combat_Realism
         public float shotAngle = 0f;
         public float shotHeight = 0f;
         public float shotSpeed = -1f;
-        private float distanceFromOrigin
+        protected float lastHeight = 9999f;
+        protected float distanceFromOrigin
         {
         	get
         	{
-                Vector3 currentPos = Vector3.Scale(this.ExactPosition, new Vector3(1,0,1));
-                return (float)((currentPos - this.origin).magnitude);
+                return (this.destination - this.origin).MagnitudeHorizontal();
         	}
         }
 
@@ -126,7 +126,7 @@ namespace Combat_Realism
         {
             const float gravity = Utility.gravityConst;
 			float height = (float)(zeroheight + ((distance * Math.Tan(angle)) - (gravity * Math.Pow(distance, 2)) / (2 * Math.Pow(velocity * Math.Cos(angle), 2))));
-
+			this.lastHeight = height;
         	return height;
         }
         
@@ -382,7 +382,7 @@ namespace Combat_Realism
 	                    	return;
 	                }
                 }
-                this.Impact(null);
+                this.Impact(null);	//Height <= 0, impact nothing, won't break bodypart height checks
                 return;
             }
         }

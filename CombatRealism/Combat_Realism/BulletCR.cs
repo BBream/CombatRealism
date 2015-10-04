@@ -13,8 +13,31 @@ namespace Combat_Realism
             base.Impact(hitThing);
             if (hitThing != null)
             {
+        		float height = this.GetProjectileHeight(this.shotHeight, this.distanceFromOrigin, this.shotAngle, this.shotSpeed);
                 int damageAmountBase = this.def.projectile.damageAmountBase;
-                BodyPartDamageInfo value = new BodyPartDamageInfo(null, null);
+                BodyPartHeight? bodyPartHeight = null;
+                Pawn pawn = hitThing as Pawn;
+                if (pawn != null)
+                {
+	                float fullHeight = Utility.GetCollisionHeight(hitThing);
+	                float percentOfBodySize = height / fullHeight;
+	                if (percentOfBodySize >= 0.8)
+	                {
+	                	bodyPartHeight = BodyPartHeight.Top;
+	                }
+	                else
+	                {
+	                	if (percentOfBodySize < 0.45)
+	                	{
+	                		bodyPartHeight = BodyPartHeight.Bottom;
+	                	}
+	                	else
+	                	{
+	                		bodyPartHeight = BodyPartHeight.Middle;
+	                	}
+	                }
+                }
+                BodyPartDamageInfo value = new BodyPartDamageInfo(bodyPartHeight, null);
                 DamageInfo dinfo = new DamageInfo(this.def.projectile.damageDef, damageAmountBase, this.launcher, this.ExactRotation.eulerAngles.y, new BodyPartDamageInfo?(value), this.equipmentDef);
                 hitThing.TakeDamage(dinfo);
             }
