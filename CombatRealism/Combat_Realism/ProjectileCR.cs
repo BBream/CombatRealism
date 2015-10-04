@@ -84,7 +84,6 @@ namespace Combat_Realism
         public float shotAngle = 0f;
         public float shotHeight = 0f;
         public float shotSpeed = -1f;
-        protected float lastHeight = 9999f;
         protected float distanceFromOrigin
         {
         	get
@@ -126,7 +125,6 @@ namespace Combat_Realism
         {
             const float gravity = Utility.gravityConst;
 			float height = (float)(zeroheight + ((distance * Math.Tan(angle)) - (gravity * Math.Pow(distance, 2)) / (2 * Math.Pow(velocity * Math.Cos(angle), 2))));
-			this.lastHeight = height;
         	return height;
         }
         

@@ -17,7 +17,7 @@ namespace Combat_Realism
                 int damageAmountBase = this.def.projectile.damageAmountBase;
                 BodyPartHeight? bodyPartHeight = null;
                 Pawn pawn = hitThing as Pawn;
-                if (pawn != null)
+                if (pawn != null && pawn.GetPosture() == PawnPosture.Standing)	//Downed pawns randomly get damaged wherever, I guess
                 {
 	                float fullHeight = Utility.GetCollisionHeight(hitThing);
 	                float percentOfBodySize = height / fullHeight;
@@ -37,6 +37,7 @@ namespace Combat_Realism
 	                	}
 	                }
                 }
+                	//All the rest is handled further on - Even the BodyPartHeight not existing doesn't matter.
                 BodyPartDamageInfo value = new BodyPartDamageInfo(bodyPartHeight, null);
                 DamageInfo dinfo = new DamageInfo(this.def.projectile.damageDef, damageAmountBase, this.launcher, this.ExactRotation.eulerAngles.y, new BodyPartDamageInfo?(value), this.equipmentDef);
                 hitThing.TakeDamage(dinfo);
